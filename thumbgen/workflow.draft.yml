@@ -1,0 +1,44 @@
+# ⚠️ 草案（非稼働）。承認・シークレット確保後に catalog repo(hairbook-ad-local-catalog) の
+#    .github/workflows/ へ配置する。ここに置いている間は発火しない（ファイル名が *.draft.yml のため）。
+#
+# 位置づけ: 既存 feed-qa.yml（毎日6:07 JST・壊れたサムネのautofix）の「後段」として、
+#           全商品に対し「良フレーム選別（方針1）＋情報帯（方針2）」を適用し override へ upsert する。
+#           feed-qa の後に走らせるため、当面は cron を分ける（例 6:40 JST）か、feed-qa 内から呼ぶ。
+
+name: カタログサムネ 全件エンリッチ (thumbnail enrich) [DRAFT]
+
+on:
+  workflow_dispatch:        # まずは手動のみ。安定後に schedule を有効化。
+  # schedule:
+  #   - cron: '40 21 * * *'  # 毎日 JST 6:40（feed-qa 6:07 の後段）
+
+permissions:
+  contents: read
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30      # 全1,385件のDL→合成→push。差分pushで実時間は短縮される想定。
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: 日本語フォント + 依存
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          pip install --quiet pillow numpy requests gspread google-auth
+
+      - name: 全件エンリッチ → override upsert
+        env:
+          GOOGLE_SHEETS_KEY_JSON: ${{ secrets.GOOGLE_SHEETS_KEY_JSON }}
+          THUMBNAILS_REPO_TOKEN:  ${{ secrets.THUMBNAILS_REPO_TOKEN }}
+          SLACK_WEBHOOK_URL:      ${{ secrets.SLACK_WEBHOOK_URL }}
+          # 方針1のAI判定を使う場合のみ:
+          # ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          ROLLOUT_RATIO:          "0.1"   # 段階展開: 対象の割合（1.0で全展開）
+          DRY_RUN:                "1"     # 初回は push/override 書込なしで検証
+        run: echo "TODO: python3 thumbnail_enrich.py --rollout $ROLLOUT_RATIO"  # 本実装は承認後
