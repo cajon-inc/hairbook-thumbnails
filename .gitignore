@@ -4,3 +4,4 @@ __pycache__/
 thumbgen/fonts/
 thumbgen/design_brief.html
 thumbgen/cr_directions.html
+thumbgen/samples/pdf/*_20*.pdf
