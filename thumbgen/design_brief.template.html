@@ -1,0 +1,302 @@
+<title>サムネイル情報帯 デザインパターン</title>
+<style>
+  :root {
+    --paper: #edeae4;
+    --surface: #f6f4f0;
+    --surface-2: #e6e2da;
+    --ink: #201c17;
+    --ink-soft: #5b5348;
+    --ink-faint: #8a8072;
+    --line: #d6d0c5;
+    --gold: #9a7328;
+    --gold-bright: #b0872f;
+    --danger: #c0472f;
+    --ok: #4c7355;
+    --band-demo: #201c17;
+    --radius: 10px;
+    --maxw: 960px;
+    --font-body: -apple-system, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", "Noto Sans JP", Meiryo, system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16130f;
+      --surface: #1f1b16;
+      --surface-2: #262019;
+      --ink: #ece7de;
+      --ink-soft: #b3a996;
+      --ink-faint: #857b6b;
+      --line: #332c22;
+      --gold: #cba85e;
+      --gold-bright: #dcbb6f;
+      --danger: #e0715a;
+      --ok: #7fa985;
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #edeae4; --surface: #f6f4f0; --surface-2: #e6e2da;
+    --ink: #201c17; --ink-soft: #5b5348; --ink-faint: #8a8072; --line: #d6d0c5;
+    --gold: #9a7328; --gold-bright: #b0872f; --danger: #c0472f; --ok: #4c7355;
+  }
+  :root[data-theme="dark"] {
+    --paper: #16130f; --surface: #1f1b16; --surface-2: #262019;
+    --ink: #ece7de; --ink-soft: #b3a996; --ink-faint: #857b6b; --line: #332c22;
+    --gold: #cba85e; --gold-bright: #dcbb6f; --danger: #e0715a; --ok: #7fa985;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--font-body); line-height: 1.7;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--gold); font-weight: 600;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--gold); display: inline-block; }
+
+  /* ── header ── */
+  header { border-bottom: 1px solid var(--line); padding: 60px 0 40px; }
+  h1 {
+    font-size: clamp(30px, 5.2vw, 46px); line-height: 1.14; margin: 20px 0 0;
+    letter-spacing: -0.01em; text-wrap: balance; font-weight: 800;
+  }
+  .lede { font-size: clamp(16px, 2.2vw, 18px); color: var(--ink-soft); margin: 18px 0 0; max-width: 62ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+  .chip {
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);
+    background: var(--surface); border: 1px solid var(--line);
+    padding: 5px 11px; border-radius: 100px;
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+
+  /* ── sections ── */
+  section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+  .sec-head { margin-bottom: 30px; }
+  h2 { font-size: clamp(22px, 3.4vw, 28px); margin: 12px 0 0; letter-spacing: -0.01em; font-weight: 750; text-wrap: balance; }
+  h2 + .sub { color: var(--ink-soft); margin: 10px 0 0; max-width: 60ch; }
+
+  /* ── before / after hero ── */
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  .ba figure { margin: 0; }
+  .shot {
+    display: block; width: 100%; border-radius: var(--radius);
+    border: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0,0,0,0.10);
+  }
+  figcaption {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em;
+    color: var(--ink-faint); margin-top: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .tag { font-family: var(--font-mono); font-size: 11px; padding: 3px 9px; border-radius: 100px; font-weight: 600; letter-spacing: .04em; }
+  .tag.before { color: var(--ink-soft); background: var(--surface-2); }
+  .tag.after { color: var(--paper); background: var(--gold); }
+  :root[data-theme="dark"] .tag.after { color: #16130f; }
+
+  /* ── anatomy ── */
+  .anatomy { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 40px; align-items: center; }
+  .spec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+  .spec-list li { display: grid; grid-template-columns: 116px 1fr; gap: 16px; padding: 15px 0; border-top: 1px solid var(--line); align-items: baseline; }
+  .spec-list li:last-child { border-bottom: 1px solid var(--line); }
+  .spec-k { font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; color: var(--gold); text-transform: uppercase; }
+  .spec-v { font-size: 15px; }
+  .spec-v b { font-weight: 700; }
+  .spec-v .num { font-family: var(--font-mono); font-size: 13.5px; background: var(--surface); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); }
+  .swatch { display: inline-block; width: 13px; height: 13px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; border: 1px solid rgba(0,0,0,.15); }
+
+  /* ── pattern grid ── */
+  .patterns { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+  .pcard { display: flex; flex-direction: column; }
+  .pcard .shot { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+  .pcard .pk { display: flex; align-items: baseline; gap: 9px; margin-top: 14px; }
+  .pk .letter { font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: var(--paper); background: var(--gold); width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  :root[data-theme="dark"] .pk .letter { color: #16130f; }
+  .pk .pname { font-weight: 700; font-size: 15px; }
+  .pcard .pdesc { color: var(--ink-soft); font-size: 13.5px; margin: 7px 0 0; }
+  .pcard .adds { font-family: var(--font-mono); font-size: 11.5px; color: var(--gold); margin-top: 8px; letter-spacing: .02em; }
+
+  /* ── generic media + notes ── */
+  .media-row { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 40px; align-items: center; }
+  .notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .notes li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; font-size: 15px; }
+  .notes .ic { color: var(--ok); font-weight: 700; }
+  .notes .ic.warn { color: var(--danger); }
+  .notes b { font-weight: 700; }
+  .notes .num { font-family: var(--font-mono); font-size: 13px; background: var(--surface); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); }
+
+  /* ── callout (anti-pattern) ── */
+  .callout { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--danger); border-radius: var(--radius); padding: 26px; display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 32px; align-items: center; }
+  .callout .k { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--danger); font-weight: 700; }
+  .callout h3 { margin: 10px 0 8px; font-size: 20px; }
+  .callout p { margin: 0 0 12px; color: var(--ink-soft); font-size: 15px; }
+  .callout .fix { font-size: 14.5px; }
+  .callout .fix b { color: var(--ink); }
+
+  /* ── decisions ── */
+  .decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .dcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .dcard .dn { font-family: var(--font-mono); color: var(--gold); font-size: 13px; font-weight: 700; }
+  .dcard h4 { margin: 8px 0 6px; font-size: 16px; }
+  .dcard p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+
+  footer { padding: 40px 0 70px; color: var(--ink-faint); font-size: 13px; }
+  footer .note { font-family: var(--font-mono); font-size: 12px; }
+
+  @media (max-width: 720px) {
+    .anatomy, .media-row, .callout { grid-template-columns: 1fr; gap: 24px; }
+    .ba { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Catalog Ad · Thumbnail Design</div>
+    <h1>サムネイル情報帯<br>デザインパターン</h1>
+    <p class="lede">カタログ広告のサムネイルに、サロン名・エリアなどの共通「情報帯」を載せて識別性と訴求の一貫性を高める。第1弾を起点に、価格・特典・メニューへと帯の中身を差し替えて継続検証する。</p>
+    <div class="meta">
+      <span class="chip">対象 <b>ローカルカタログ 約1,385商品</b></span>
+      <span class="chip">生成 <b>コード合成（Pillow）</b></span>
+      <span class="chip">追加広告費 <b>なし</b></span>
+      <span class="chip">ステータス <b>提案・PoC段階</b></span>
+    </div>
+  </header>
+
+  <!-- BEFORE / AFTER -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Before / After</div>
+      <h2>「素材そのまま」から「共通の情報帯」へ</h2>
+      <p class="sub">現状はHairBook投稿の画像を加工なしで配信している。フィード生成の段階で帯を合成し、どのサロンの広告かを一目で伝える。</p>
+    </div>
+    <div class="ba">
+      <figure>
+        <img class="shot" src="__IMG_BEFORE__" alt="現状のサムネイル（帯なし）">
+        <figcaption><span class="tag before">BEFORE</span> 加工なし・情報帯なし</figcaption>
+      </figure>
+      <figure>
+        <img class="shot" src="__IMG_A__" alt="情報帯を合成したサムネイル">
+        <figcaption><span class="tag after">AFTER</span> 帯あり（パターンA）</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ANATOMY -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Anatomy</div>
+      <h2>帯の構造（第1弾のデザイン）</h2>
+      <p class="sub">上部・全幅の黒半透明帯に白文字。全サロンで一貫させやすく、可読性が最も高い組み合わせ。</p>
+    </div>
+    <div class="anatomy">
+      <figure style="margin:0">
+        <img class="shot" src="__IMG_A__" alt="帯の構造">
+      </figure>
+      <ul class="spec-list">
+        <li><span class="spec-k">位置</span><span class="spec-v"><b>上部・全幅</b>／高さは内容に応じ自動（最小 <span class="num">180px</span>）</span></li>
+        <li><span class="spec-k">背景</span><span class="spec-v"><span class="swatch" style="background:rgba(20,20,20,.72)"></span><b>黒半透明</b> <span class="num">rgba(20,20,20,0.72)</span></span></li>
+        <li><span class="spec-k">サロン名</span><span class="spec-v"><span class="swatch" style="background:#fff"></span>白・太字 <span class="num">48px</span>／長い名は自動縮小→末尾省略</span></li>
+        <li><span class="spec-k">エリア</span><span class="spec-v"><span class="swatch" style="background:#e6e6e6"></span>ピン＋ <span class="num">#E6E6E6</span> <span class="num">28px</span></span></li>
+        <li><span class="spec-k">データ源</span><span class="spec-v">フィード既存項目（<b>サロン名 / 市区町村</b>）を使用。文字生成はしない</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PATTERNS A–D -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Variations</div>
+      <h2>パターン展開 A → D</h2>
+      <p class="sub">帯の中身を差し替えるだけで検証パターンを拡張できる。骨格・位置・セーフエリアは共通のまま。</p>
+    </div>
+    <div class="patterns">
+      <div class="pcard">
+        <img class="shot" src="__IMG_A__" alt="パターンA">
+        <div class="pk"><span class="letter">A</span><span class="pname">サロン名＋エリア</span></div>
+        <p class="pdesc">識別性の土台。第1弾はここから。</p>
+        <div class="adds">BASE</div>
+      </div>
+      <div class="pcard">
+        <img class="shot" src="__IMG_B__" alt="パターンB">
+        <div class="pk"><span class="letter">B</span><span class="pname">＋価格帯</span></div>
+        <p class="pdesc">来店ハードルの目安を提示。</p>
+        <div class="adds">+ カット ¥4,400〜</div>
+      </div>
+      <div class="pcard">
+        <img class="shot" src="__IMG_C__" alt="パターンC">
+        <div class="pk"><span class="letter">C</span><span class="pname">＋特典バッジ</span></div>
+        <p class="pdesc">新規・限定オファーで後押し。</p>
+        <div class="adds">+ 新規20%OFF</div>
+      </div>
+      <div class="pcard">
+        <img class="shot" src="__IMG_D__" alt="パターンD">
+        <div class="pk"><span class="letter">D</span><span class="pname">＋メニュー訴求</span></div>
+        <p class="pdesc">得意メニューで検索意図に接続。</p>
+        <div class="adds">+ 白髪ぼかしハイライト</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SAFE AREA -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Safe Area</div>
+      <h2>見切れないための設計</h2>
+      <p class="sub">素材は 4:5（1080×1350）。ストーリーズ/リールの 9:16 カバー表示では左右が各 14.8% 見切れる。文字は必ずセーフエリア内に置く。</p>
+    </div>
+    <div class="media-row">
+      <figure style="margin:0">
+        <img class="shot" src="__IMG_SAFE__" alt="セーフエリア可視化">
+      </figure>
+      <ul class="notes">
+        <li><span class="ic">✓</span><span>文字・ピン・バッジは<b>中央約70%</b>に収める（左右各 <span class="num">160px / 14.8%</span> を避ける）</span></li>
+        <li><span class="ic">✓</span><span>長いサロン名は<b>自動縮小</b>し、収まらなければ末尾を <span class="num">…</span> で省略</span></li>
+        <li><span class="ic">✓</span><span>入力寸法が <span class="num">1080×1920</span> や <span class="num">720×900</span> でも破綻しないよう<b>幅から相対計算</b></span></li>
+        <li><span class="ic warn">!</span><span>赤い帯が<b>9:16で切れる範囲</b>。帯の文字は切れても残る／素材端の焼き込み文字は切れる</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ANTI-PATTERN -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Pitfall</div>
+      <h2>落とし穴：二重テキスト</h2>
+      <p class="sub">既存サムネの多くは、サロンが動画へ焼き込んだ文字（価格・エリア、時に「スタイリスト募集」）を含む。その上に帯を重ねると情報が二重になり破綻する。</p>
+    </div>
+    <div class="callout">
+      <figure style="margin:0">
+        <img class="shot" src="__IMG_ANTI__" alt="二重テキストの例">
+      </figure>
+      <div>
+        <div class="k">Bad Example</div>
+        <h3>帯とフレームが競合する</h3>
+        <p>この素材はすでに「極上ヘッドスパ ¥4,400／志木駅徒歩2分」を焼き込んでいる。上に帯を載せると、同じ情報が二重に表示され、清潔感も失われる。</p>
+        <p class="fix"><b>→ だから2つの方針は連結している。</b> まず<b>方針1</b>で「髪型が見える清潔なフレーム」を選び、次に<b>方針2</b>で一貫した帯を載せる。この順序で初めて情報帯が活きる。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DECISIONS -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Decisions</div>
+      <h2>確定したいこと</h2>
+      <p class="sub">承認・着手にあたり、デザイン面で決めておきたい論点。</p>
+    </div>
+    <div class="decisions">
+      <div class="dcard"><div class="dn">01</div><h4>第1弾はAでよいか</h4><p>まず「サロン名＋エリア」で全体展開し、B〜Dは帯の差し替えで順次検証。</p></div>
+      <div class="dcard"><div class="dn">02</div><h4>帯の見た目</h4><p>黒半透明72%・白文字・上部全幅で確定してよいか（色・高さ・フォント）。</p></div>
+      <div class="dcard"><div class="dn">03</div><h4>エリアの粒度</h4><p>市区町村（例「大阪市中央区」）／都道府県＋市区／最寄駅。駅は専用列がなく要抽出。</p></div>
+      <div class="dcard"><div class="dn">04</div><h4>清潔フレーム化（方針1）</h4><p>帯を活かすため、求人・価格カードを避け髪型フレームを選ぶ改善を同時に進めるか。</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap" style="padding:0">
+      <p class="note">※ 本資料のサロン名・エリア・価格・特典はレイアウト検証用のダミー。本番はフィードの既存データ（access_salon_name / city_name 等）を使用。素材は元々 hairbook.jp で公開配信されている広告フレーム。</p>
+    </div>
+  </footer>
+</div>

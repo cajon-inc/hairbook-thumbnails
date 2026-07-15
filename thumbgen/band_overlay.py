@@ -34,20 +34,37 @@ REF_WIDTH = 1080          # フォント/余白の基準幅（この幅で下の
 
 @dataclass
 class BandSpec:
-    """帯のデザイン仕様。文言・寸法・色をここで差し替える（パターンA〜Dを表現）。"""
-    # 表示テキスト
+    """帯のデザイン仕様。文言・寸法・色をここで差し替える（パターンA〜Dを表現）。
+
+    パターン:
+      A サロン名＋エリア            … salon + area
+      B ＋価格帯                   … + price   (例 "カット ¥4,400〜")
+      C ＋特典バッジ               … + badge   (例 "新規20%OFF")
+      D ＋メニュー訴求             … + menu    (例 "白髪ぼかしハイライト")
+    """
+    # 表示テキスト（A=salon/area、B=price、C=badge、D=menu を足す）
     salon: str = ""
     area: str = ""
+    price: str = ""
+    menu: str = ""
+    badge: str = ""
     # レイアウト（REF_WIDTH=1080 基準の px。実寸は width に比例スケール）
-    band_height: int = 180          # 帯の高さ
+    band_height: int = 180          # 帯の最小高さ（内容が増えれば自動で伸びる）
     pad_x: int = 40                 # 帯内テキストの左パディング（セーフエリア左端からさらに内側へ）
+    vpad: int = 26                  # 帯の上下パディング（自動高さ計算用）
     salon_size: int = 48            # サロン名フォント(px)・太字
     area_size: int = 28             # エリアフォント(px)
-    line_gap: int = 10              # サロン名とエリアの行間
+    extra_size: int = 30            # 価格/メニュー行フォント(px)
+    badge_size: int = 27            # バッジ文字(px)
+    line_gap: int = 10              # 行間
     # 色
     band_rgba: tuple = (20, 20, 20, 184)   # rgba(20,20,20,0.72) ≒ alpha 184
     salon_fill: tuple = (255, 255, 255)    # 白
     area_fill: tuple = (230, 230, 230)     # #E6E6E6
+    price_fill: tuple = (240, 214, 145)    # 淡いゴールド（数字を目立たせる）
+    menu_fill: tuple = (235, 235, 235)
+    badge_bg: tuple = (203, 163, 90)       # ゴールドのピル
+    badge_fg: tuple = (26, 20, 12)         # バッジ文字（濃色）
     # 挙動
     salon_min_size: int = 30        # 収まらない時に縮める下限
     style: str = "solid"            # "solid"（仕様準拠） or "gradient"（下方向フェード）
@@ -149,64 +166,104 @@ def _draw_pin(draw: ImageDraw.ImageDraw, x: int, y: int, size: int, fill: tuple)
     return x + w + int(size * 0.28)
 
 
+def _draw_pill(draw: ImageDraw.ImageDraw, x: int, y: int, w: int, h: int, fill: tuple) -> None:
+    """角丸のピル（特典バッジ用）。"""
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=h // 2, fill=fill)
+
+
 # ─────────────────────────────────────────────
 # 帯合成 本体
 # ─────────────────────────────────────────────
 def render_band(img: Image.Image, spec: BandSpec) -> Image.Image:
-    """img（RGB/RGBA）に帯を合成した RGB 画像を返す。元画像は破壊しない。"""
+    """img（RGB/RGBA）に帯を合成した RGB 画像を返す。元画像は破壊しない。
+
+    行構成: サロン名（大・太字）／エリア（ピン）／価格（B）／メニュー（D）。
+    バッジ（C）はサロン名行の右端にピルで重ねる。帯高は内容に応じて自動で伸びる。
+    """
     base = img.convert("RGBA")
     W, H = base.size
     scale = W / REF_WIDTH  # 基準幅からのスケール（非1080入力にも適応）
 
-    band_h = int(spec.band_height * scale)
-    safe_inset = int(W * SAFE_INSET_RATIO)          # 見切れる左右の幅
-    text_left = safe_inset + int(spec.pad_x * scale)  # テキスト開始 x（セーフエリア内）
+    safe_inset = int(W * SAFE_INSET_RATIO)             # 見切れる左右の幅
+    text_left = safe_inset + int(spec.pad_x * scale)   # テキスト開始 x（セーフエリア内）
     text_right = W - safe_inset - int(spec.pad_x * scale)
-    usable_w = max(10, text_right - text_left)
+    usable_w = max(40, text_right - text_left)
+    line_gap = int(spec.line_gap * scale)
+    m = ImageDraw.Draw(Image.new("RGBA", (1, 1)))      # 計測専用
 
-    # 帯レイヤ（半透明）
+    # ── 特典バッジ（C）: サロン名行の右に置くピル ──
+    badge = spec.badge.strip()
+    badge_font = badge_w = badge_h = None
+    if badge:
+        badge_font = _load_font(_FONT_CANDIDATES_BOLD, int(spec.badge_size * scale))
+        bb = m.textbbox((0, 0), badge, font=badge_font)
+        pill_padx, pill_pady = int(20 * scale), int(11 * scale)
+        badge_w = (bb[2] - bb[0]) + 2 * pill_padx
+        badge_h = (bb[3] - bb[1]) + 2 * pill_pady
+
+    # ── サロン名（A）: バッジ幅を避けて自動フィット ──
+    salon = spec.salon.strip()
+    salon_usable = usable_w - (badge_w + int(24 * scale) if badge else 0)
+    salon_usable = max(60, salon_usable)
+    salon_font = _fit_font(m, salon, _FONT_CANDIDATES_BOLD,
+                           int(spec.salon_size * scale), int(spec.salon_min_size * scale), salon_usable)
+    salon = _ellipsize(m, salon, salon_font, salon_usable)
+
+    # ── サロン名の下に積む行（エリア/価格/メニュー）──
+    aps = int(spec.area_size * scale)
+    pin_advance = int(aps * 0.72) + int(aps * 0.28)
+    lines = []  # (text, font, fill, pin)
+    if spec.area.strip():
+        af = _load_font(_FONT_CANDIDATES_REG, aps)
+        lines.append((_ellipsize(m, spec.area.strip(), af, usable_w - pin_advance), af, spec.area_fill, True))
+    if spec.price.strip():
+        pf = _load_font(_FONT_CANDIDATES_BOLD, int(spec.extra_size * scale))
+        lines.append((_ellipsize(m, spec.price.strip(), pf, usable_w), pf, spec.price_fill, False))
+    if spec.menu.strip():
+        mf = _load_font(_FONT_CANDIDATES_REG, int(spec.extra_size * scale))
+        lines.append((_ellipsize(m, spec.menu.strip(), mf, usable_w), mf, spec.menu_fill, False))
+
+    # ── 高さ計算（内容に合わせて自動）──
+    salon_h = m.textbbox((0, 0), salon, font=salon_font)[3]
+    line_hs = [m.textbbox((0, 0), t or "あ", font=f)[3] for (t, f, _, _) in lines]
+    block_h = salon_h + sum(line_gap + lh for lh in line_hs)
+    vpad = int(spec.vpad * scale)
+    band_h = max(int(spec.band_height * scale), block_h + 2 * vpad)
+
+    # ── 帯レイヤ ──
     overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     od = ImageDraw.Draw(overlay)
     if spec.style == "gradient":
-        # 上端が濃く下へフェード（ハードな下線を避けたい時のオプション）
         r, g, b, a = spec.band_rgba
         for yy in range(band_h):
-            alpha = int(a * (1 - yy / band_h) ** 0.6)
-            od.line([(0, yy), (W, yy)], fill=(r, g, b, alpha))
+            od.line([(0, yy), (W, yy)], fill=(r, g, b, int(a * (1 - yy / band_h) ** 0.6)))
     else:
         od.rectangle([0, 0, W, band_h], fill=spec.band_rgba)
-
     draw = ImageDraw.Draw(overlay)
 
-    # サロン名（太字・自動フィット）
-    salon = spec.salon.strip()
-    salon_font = _fit_font(draw, salon, _FONT_CANDIDATES_BOLD,
-                           int(spec.salon_size * scale), int(spec.salon_min_size * scale), usable_w)
-    salon = _ellipsize(draw, salon, salon_font, usable_w)
-
-    # エリア（ピン + テキスト）。ピン幅を差し引いた残り幅に収める
-    area = spec.area.strip()
-    area_font = _load_font(_FONT_CANDIDATES_REG, int(spec.area_size * scale))
-    pin_size = int(spec.area_size * scale)
-    pin_advance = int(pin_size * 0.72) + int(pin_size * 0.28)
-    area = _ellipsize(draw, area, area_font, usable_w - pin_advance)
-
-    # 縦位置：2行ブロックを帯の中央に
-    salon_h = draw.textbbox((0, 0), salon, font=salon_font)[3]
-    area_h = draw.textbbox((0, 0), area or "あ", font=area_font)[3]
-    line_gap = int(spec.line_gap * scale)
-    block_h = salon_h + (line_gap + area_h if area else 0)
-    y0 = max(int(6 * scale), (band_h - block_h) // 2)
-
+    # ── 描画 ──
+    y0 = max(vpad, (band_h - block_h) // 2)
     draw.text((text_left, y0), salon, font=salon_font, fill=spec.salon_fill)
 
-    if area:
-        ay = y0 + salon_h + line_gap
-        tx = _draw_pin(draw, text_left, ay, area_h, spec.area_fill)
-        draw.text((tx, ay), area, font=area_font, fill=spec.area_fill)
+    if badge:
+        bx = text_right - badge_w
+        by = y0 + (salon_h - badge_h) // 2
+        _draw_pill(draw, bx, by, badge_w, badge_h, spec.badge_bg)
+        bb = draw.textbbox((0, 0), badge, font=badge_font)
+        draw.text((bx + (badge_w - (bb[2] - bb[0])) // 2 - bb[0],
+                   by + (badge_h - (bb[3] - bb[1])) // 2 - bb[1]),
+                  badge, font=badge_font, fill=spec.badge_fg)
 
-    out = Image.alpha_composite(base, overlay).convert("RGB")
-    return out
+    y = y0 + salon_h + line_gap
+    for (text, font, fill, pin), lh in zip(lines, line_hs):
+        if pin:
+            tx = _draw_pin(draw, text_left, y, lh, fill)
+            draw.text((tx, y), text, font=font, fill=fill)
+        else:
+            draw.text((text_left, y), text, font=font, fill=fill)
+        y += lh + line_gap
+
+    return Image.alpha_composite(base, overlay).convert("RGB")
 
 
 def overlay_file(src: str, dst: str, spec: BandSpec, quality: int = 85) -> None:
