@@ -149,6 +149,26 @@
     .anatomy, .media-row, .callout { grid-template-columns: 1fr; gap: 24px; }
     .ba { grid-template-columns: 1fr 1fr; }
   }
+
+  /* ── 印刷 / PDF ── */
+  @media print {
+    :root{--paper:#fff;--surface:#f7f5f1;--surface-2:#e6e2da;--ink:#1e1a15;--ink-soft:#4d463c;--ink-faint:#7a715f;--line:#cfc9bd;--gold:#8a6620;--gold-bright:#a37b28;}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+    @page{size:A4;margin:11mm;}
+    body{background:#fff;font-size:10.5px;line-height:1.5;}
+    .wrap{max-width:none;padding:0;}
+    header{padding:0 0 12px;}
+    h1{font-size:23px;} h2{font-size:16px;}
+    .lede{font-size:11.5px;margin-top:8px;}
+    section{padding:15px 0;}
+    .sec-head{margin-bottom:13px;}
+    .patterns{grid-template-columns:repeat(4,1fr);gap:12px;}
+    .shot{box-shadow:none !important;}
+    figure,.pcard,.dcard,.callout,.anatomy,.media-row,.ba{break-inside:avoid;}
+    .sec-head{break-after:avoid;}
+    a{color:inherit;text-decoration:none;}
+    footer{padding:14px 0 0;}
+  }
 </style>
 
 <div class="wrap">
