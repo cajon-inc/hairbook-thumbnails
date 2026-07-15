@@ -3,3 +3,4 @@ __pycache__/
 .env
 thumbgen/fonts/
 thumbgen/design_brief.html
+thumbgen/cr_directions.html

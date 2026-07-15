@@ -1,0 +1,257 @@
+<title>広告CR サムネイル デザイン方向 6案</title>
+<style>
+  :root {
+    --paper:#edeae4; --surface:#f6f4f0; --surface-2:#e6e2da;
+    --ink:#201c17; --ink-soft:#5b5348; --ink-faint:#8a8072; --line:#d6d0c5;
+    --gold:#9a7328; --gold-bright:#b0872f; --danger:#c0472f; --ok:#4c7355; --star:#b0872f;
+    --radius:10px; --maxw:1040px;
+    --font-body:-apple-system,"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","YuGothic","Noto Sans JP",Meiryo,system-ui,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){:root{
+    --paper:#16130f; --surface:#1f1b16; --surface-2:#262019;
+    --ink:#ece7de; --ink-soft:#b3a996; --ink-faint:#857b6b; --line:#332c22;
+    --gold:#cba85e; --gold-bright:#dcbb6f; --danger:#e0715a; --ok:#7fa985; --star:#dcbb6f;
+  }}
+  :root[data-theme="light"]{--paper:#edeae4;--surface:#f6f4f0;--surface-2:#e6e2da;--ink:#201c17;--ink-soft:#5b5348;--ink-faint:#8a8072;--line:#d6d0c5;--gold:#9a7328;--gold-bright:#b0872f;--danger:#c0472f;--ok:#4c7355;--star:#b0872f;}
+  :root[data-theme="dark"]{--paper:#16130f;--surface:#1f1b16;--surface-2:#262019;--ink:#ece7de;--ink-soft:#b3a996;--ink-faint:#857b6b;--line:#332c22;--gold:#cba85e;--gold-bright:#dcbb6f;--danger:#e0715a;--ok:#7fa985;--star:#dcbb6f;}
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);line-height:1.7;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+  .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-weight:600;display:flex;align-items:center;gap:10px;}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--gold);display:inline-block;}
+
+  header{border-bottom:1px solid var(--line);padding:60px 0 40px;}
+  h1{font-size:clamp(30px,5.2vw,46px);line-height:1.14;margin:20px 0 0;letter-spacing:-.01em;text-wrap:balance;font-weight:800;}
+  .lede{font-size:clamp(16px,2.2vw,18px);color:var(--ink-soft);margin:18px 0 0;max-width:64ch;}
+
+  /* criteria legend */
+  .legend{display:flex;flex-wrap:wrap;gap:22px;margin-top:26px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);}
+  .legend div{display:flex;flex-direction:column;gap:2px;}
+  .legend .lk{font-weight:700;font-size:13.5px;}
+  .legend .lv{font-size:12px;color:var(--ink-soft);}
+
+  section{padding:52px 0;border-bottom:1px solid var(--line);}
+  .sec-head{margin-bottom:30px;}
+  h2{font-size:clamp(22px,3.4vw,28px);margin:12px 0 0;letter-spacing:-.01em;font-weight:750;text-wrap:balance;}
+  h2 + .sub{color:var(--ink-soft);margin:10px 0 0;max-width:62ch;}
+
+  /* directions grid */
+  .directions{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:26px;}
+  .dir{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .dir.rec{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
+  .dir .shot{display:block;width:100%;border-bottom:1px solid var(--line);}
+  .dbody{padding:18px 18px 20px;display:flex;flex-direction:column;gap:10px;}
+  .dhead{display:flex;align-items:baseline;gap:10px;}
+  .dnum{font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--paper);background:var(--gold);width:26px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;flex:none;}
+  :root[data-theme="dark"] .dnum{color:#16130f;}
+  .dhead h3{margin:0;font-size:17px;font-weight:750;}
+  .star{color:var(--star);font-size:12px;font-family:var(--font-mono);margin-left:6px;letter-spacing:.04em;}
+  .dconcept{margin:0;font-size:13.5px;color:var(--ink-soft);}
+  .rating{list-style:none;margin:2px 0 0;padding:12px 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;}
+  .rating li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--ink-soft);}
+  .meter{width:64px;height:6px;background:var(--surface-2);border-radius:100px;overflow:hidden;flex:none;}
+  .meter i{display:block;height:100%;background:var(--gold);border-radius:100px;}
+  .dbest{margin:4px 0 0;font-size:12.5px;}
+  .dbest b{color:var(--gold);font-weight:700;}
+
+  /* recommendation */
+  .rec-wrap{display:grid;grid-template-columns:1fr;gap:24px;}
+  .rec-why{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:var(--radius);padding:24px 26px;}
+  .rec-why h3{margin:0 0 8px;font-size:20px;}
+  .rec-why p{margin:0 0 10px;color:var(--ink-soft);font-size:14.5px;}
+  .rec-why ul{margin:8px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:8px;}
+  .rec-why ul li{display:grid;grid-template-columns:20px 1fr;gap:10px;font-size:14px;}
+  .rec-why .ic{color:var(--ok);font-weight:700;}
+  .strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .strip figure{margin:0;}
+  .strip img{width:100%;border-radius:8px;border:1px solid var(--line);display:block;}
+  .strip figcaption{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);margin-top:8px;text-align:center;}
+
+  .alt{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:8px;}
+  .alt div{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
+  .alt .an{font-family:var(--font-mono);font-size:12px;color:var(--gold);font-weight:700;}
+  .alt h4{margin:6px 0 4px;font-size:15px;}
+  .alt p{margin:0;font-size:13px;color:var(--ink-soft);}
+
+  .offer{display:grid;grid-template-columns:0.7fr 1.3fr;gap:32px;align-items:center;}
+  .offer img{width:100%;border-radius:var(--radius);border:1px solid var(--line);box-shadow:0 8px 26px rgba(0,0,0,.10);}
+  .offer p{margin:0 0 10px;font-size:15px;color:var(--ink-soft);}
+  .offer b{color:var(--ink);}
+
+  footer{padding:38px 0 70px;color:var(--ink-faint);font-size:13px;}
+  footer .note{font-family:var(--font-mono);font-size:12px;}
+
+  @media (max-width:720px){.offer{grid-template-columns:1fr;}.strip{grid-template-columns:1fr;}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Ad Creative · Design Directions</div>
+    <h1>広告CR サムネイル<br>デザイン方向 6案</h1>
+    <p class="lede">現行は「上部の黒帯」1案のみ。より<b>見やすく</b>・髪型（＝商品）を活かし・広告クリエイティブとして訴求力の高い方向を6案そろえて比較する。文言・セーフエリア（中央70%）は全案共通。</p>
+    <div class="legend">
+      <div><span class="lk">見やすさ</span><span class="lv">どんな写真でも文字が読めるか</span></div>
+      <div><span class="lk">髪型を活かす</span><span class="lv">商品＝髪型を隠さないか</span></div>
+      <div><span class="lk">ブランド感</span><span class="lv">洗練・一貫した見え方か</span></div>
+      <div><span class="lk">訴求力</span><span class="lv">CRとして目を引くか</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">6 Directions</div>
+      <h2>6つのデザイン方向</h2>
+      <p class="sub">同一の写真・同一の文言（サロン名＋エリア）で並べ、レイアウトの違いだけを比較。評価は相対の目安。</p>
+    </div>
+    <div class="directions">
+
+      <article class="dir">
+        <img class="shot" src="__IMG_01__" alt="上部ソリッド帯">
+        <div class="dbody">
+          <div class="dhead"><span class="dnum">01</span><h3>上部ソリッド帯</h3></div>
+          <p class="dconcept">現行案。上部に黒半透明の帯。明快だが重く、髪の上部を隠す。</p>
+          <ul class="rating">
+            <li>見やすさ<span class="meter"><i style="width:100%"></i></span></li>
+            <li>髪型を活かす<span class="meter"><i style="width:50%"></i></span></li>
+            <li>ブランド感<span class="meter"><i style="width:50%"></i></span></li>
+            <li>訴求力<span class="meter"><i style="width:75%"></i></span></li>
+          </ul>
+          <p class="dbest"><b>向く場面:</b> 確実性重視・最小実装のフォールバック。</p>
+        </div>
+      </article>
+
+      <article class="dir rec">
+        <img class="shot" src="__IMG_02__" alt="下部スクリム">
+        <div class="dbody">
+          <div class="dhead"><span class="dnum">02</span><h3>下部スクリム<span class="star">★ 推奨</span></h3></div>
+          <p class="dconcept">下部グラデーションに白文字＋金の短いルール。髪型を隠さず最も自然でプレミアム。</p>
+          <ul class="rating">
+            <li>見やすさ<span class="meter"><i style="width:100%"></i></span></li>
+            <li>髪型を活かす<span class="meter"><i style="width:100%"></i></span></li>
+            <li>ブランド感<span class="meter"><i style="width:75%"></i></span></li>
+            <li>訴求力<span class="meter"><i style="width:100%"></i></span></li>
+          </ul>
+          <p class="dbest"><b>向く場面:</b> 全体標準。汎用の第一候補。</p>
+        </div>
+      </article>
+
+      <article class="dir">
+        <img class="shot" src="__IMG_03__" alt="ロワーサードカード">
+        <div class="dbody">
+          <div class="dhead"><span class="dnum">03</span><h3>ロワーサードカード</h3></div>
+          <p class="dconcept">下部左に角丸カード＋金の縦アクセント。最もブランド／designed な見え方。</p>
+          <ul class="rating">
+            <li>見やすさ<span class="meter"><i style="width:100%"></i></span></li>
+            <li>髪型を活かす<span class="meter"><i style="width:100%"></i></span></li>
+            <li>ブランド感<span class="meter"><i style="width:100%"></i></span></li>
+            <li>訴求力<span class="meter"><i style="width:75%"></i></span></li>
+          </ul>
+          <p class="dbest"><b>向く場面:</b> ブランド訴求・法人企画・上位プラン。</p>
+        </div>
+      </article>
+
+      <article class="dir">
+        <img class="shot" src="__IMG_04__" alt="フロストガラス帯">
+        <div class="dbody">
+          <div class="dhead"><span class="dnum">04</span><h3>フロストガラス帯</h3></div>
+          <p class="dconcept">下地をぼかした帯。モダンで柔らかく、どんな背景でも下地に馴染む。</p>
+          <ul class="rating">
+            <li>見やすさ<span class="meter"><i style="width:100%"></i></span></li>
+            <li>髪型を活かす<span class="meter"><i style="width:75%"></i></span></li>
+            <li>ブランド感<span class="meter"><i style="width:75%"></i></span></li>
+            <li>訴求力<span class="meter"><i style="width:75%"></i></span></li>
+          </ul>
+          <p class="dbest"><b>向く場面:</b> 洗練・都会的トーンを出したい時。</p>
+        </div>
+      </article>
+
+      <article class="dir">
+        <img class="shot" src="__IMG_05__" alt="コーナータグ">
+        <div class="dbody">
+          <div class="dhead"><span class="dnum">05</span><h3>コーナー・ミニマルタグ</h3></div>
+          <p class="dconcept">上部にピン付きの小タグ。占有が最小で、写真（髪型）を最大限主役に。</p>
+          <ul class="rating">
+            <li>見やすさ<span class="meter"><i style="width:75%"></i></span></li>
+            <li>髪型を活かす<span class="meter"><i style="width:100%"></i></span></li>
+            <li>ブランド感<span class="meter"><i style="width:50%"></i></span></li>
+            <li>訴求力<span class="meter"><i style="width:50%"></i></span></li>
+          </ul>
+          <p class="dbest"><b>向く場面:</b> 写真の力が強い作品・髪型見せ重視。</p>
+        </div>
+      </article>
+
+      <article class="dir">
+        <img class="shot" src="__IMG_06__" alt="エディトリアル">
+        <div class="dbody">
+          <div class="dhead"><span class="dnum">06</span><h3>エディトリアル</h3></div>
+          <p class="dconcept">大きなサロン名＋トラッキングした地名＋金ヘアライン。雑誌表紙の存在感。</p>
+          <ul class="rating">
+            <li>見やすさ<span class="meter"><i style="width:75%"></i></span></li>
+            <li>髪型を活かす<span class="meter"><i style="width:100%"></i></span></li>
+            <li>ブランド感<span class="meter"><i style="width:100%"></i></span></li>
+            <li>訴求力<span class="meter"><i style="width:100%"></i></span></li>
+          </ul>
+          <p class="dbest"><b>向く場面:</b> キャンペーン・世界観重視。名前が長いと窮屈。</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Recommendation</div>
+      <h2>推奨：② 下部スクリム</h2>
+      <p class="sub">見やすさ・髪型を活かす・訴求力のバランスが最良。どんな写真でも破綻しにくく、全体展開の第一候補。</p>
+    </div>
+    <div class="rec-wrap">
+      <div class="rec-why">
+        <h3>なぜ下部スクリムか</h3>
+        <ul>
+          <li><span class="ic">✓</span><span><b>髪型を隠さない</b>：情報は下部に置き、上2/3の髪・仕上がりを見せられる。</span></li>
+          <li><span class="ic">✓</span><span><b>どんな背景でも読める</b>：グラデーションが下地を落とし、明るい写真でも暗い写真でも白文字が立つ。</span></li>
+          <li><span class="ic">✓</span><span><b>プレミアムで一貫</b>：金の短いルール＋余白で、全サロンを同じ品位に揃えられる。</span></li>
+          <li><span class="ic">✓</span><span><b>拡張しやすい</b>：価格・特典バッジ・メニューを同じ骨格で足せる。</span></li>
+        </ul>
+      </div>
+      <div>
+        <p class="sub" style="margin:0 0 12px">背景が違っても破綻しない（明るい／無地／暗め・情報多）：</p>
+        <div class="strip">
+          <figure><img src="__IMG_REC_LIGHT__" alt="明るい背景"><figcaption>明るい・淡色</figcaption></figure>
+          <figure><img src="__IMG_REC_PLAIN__" alt="無地背景"><figcaption>無地</figcaption></figure>
+          <figure><img src="__IMG_REC_BUSY__" alt="暗め背景"><figcaption>暗め・情報多</figcaption></figure>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt">
+      <div><div class="an">2nd</div><h4>③ ロワーサード</h4><p>より強いブランド感が欲しい上位プラン向け。</p></div>
+      <div><div class="an">2nd</div><h4>④ フロスト</h4><p>都会的で柔らかいトーンにしたい時の代替。</p></div>
+      <div><div class="an">alt</div><h4>⑤ コーナータグ</h4><p>写真を最大限主役にしたい作品向け。</p></div>
+      <div><div class="an">fallback</div><h4>① 上部帯</h4><p>最小実装・確実性重視のフォールバック。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Offer</div>
+      <h2>訴求を足す：特典バッジ</h2>
+      <p class="sub">どの方向にも、右上に特典バッジ（例「新規20%OFF」）を重ねられる。オファーはCRの反応を押し上げやすい。</p>
+    </div>
+    <div class="offer">
+      <img src="__IMG_BADGE__" alt="特典バッジの例">
+      <div>
+        <p><b>骨格は共通のまま、要素を差し替えるだけ。</b>サロン名＋エリアを土台に、価格帯・特典・メニューを検証パターンとして載せ替えられる（帯の中身の話であり、レイアウトの選定とは独立）。</p>
+        <p>バッジはセーフエリア内（右上）に配置し、9:16表示でも見切れない。色はゴールドで全サロン一貫。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap" style="padding:0">
+      <p class="note">※ サロン名・エリア・特典はレイアウト検証用のダミー。本番はフィード既存データ（access_salon_name / city_name 等）を使用。素材は元々 hairbook.jp で公開配信されている広告フレーム。評価（メーター）は相対の目安。</p>
+    </div>
+  </footer>
+</div>
