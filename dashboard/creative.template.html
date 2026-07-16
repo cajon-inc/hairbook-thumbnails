@@ -176,13 +176,15 @@ select,.btn{background:var(--panel-2);border:1px solid var(--line);border-radius
 const ITEMS = __ITEMS_JSON__;
 const FONT = '"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans JP",Meiryo,sans-serif';
 const DESIGNS = [
-  ["bottom_scrim","下部スクリム ★"],["lower_third","ロワーサード"],["top_band","上部帯"],
-  ["frosted_bar","フロスト"],["corner_tag","コーナー"],["editorial","エディトリアル"],
-  ["bold_bar","強調バー 🔥"],["billboard","ビルボード 🔥"],["burst","バースト 🔥"],["ribbon","斜めリボン 🔥"],
+  ["bottom_scrim","スタンダード ★"],["caption","キャプション"],["magazine","マガジン"],
+  ["letterbox","シネマ"],["namecard","ネームカード"],["tategaki","縦書き"],
+  ["frameline","フレーム"],["polaroid","ポラロイド"],["poster","ポスター"],["plate","プレート"],
 ];
 const DLABEL = Object.fromEntries(DESIGNS);
-const SAFE=0.148, REF=1080, GOLD='#cea960', DARK='rgba(17,15,13,';
-const ACCENT='#e4322b', ACCENT2='#f4b400';
+const SAFE=0.148, REF=1080, DARK='rgba(20,16,12,';
+/* パレット: 墨・生成り・くすみ金の3色系。原色/赤系は使わない（チラシ化するため） */
+const INK='#221c15', IVORY='#f5f1e8', PAPER='#fdfbf6', MUTE='#8d8477', GOLD='#b08d57', GOLDL='#dcbb82';
+const MINCHO='"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif';
 
 /* ---------- state (localStorage overlay) ---------- */
 const LS='hb_creative_cfg_v1';
@@ -202,96 +204,162 @@ function loadImgSrc(src){ return new Promise(res=>{ if(imgCache[src]) return res
 
 /* ---------- canvas band renderers (overlays.py のJS版) ---------- */
 function met(W){const s=W/REF,inset=Math.round(W*SAFE),left=inset+Math.round(40*s),right=W-inset-Math.round(40*s);return{s,inset,left,right,usable:Math.max(60,right-left)};}
-function fit(ctx,t,w,start,min,maxw){let sz=start;for(;sz>=min;sz-=2){ctx.font=`${w} ${sz}px ${FONT}`;if(ctx.measureText(t).width<=maxw)return sz;}return min;}
+function fit(ctx,t,w,start,min,maxw,fam){fam=fam||FONT;let sz=start;for(;sz>=min;sz-=2){ctx.font=`${w} ${sz}px ${fam}`;if(ctx.measureText(t).width<=maxw)return sz;}return min;}
 function ell(ctx,t,maxw){if(!t)return'';if(ctx.measureText(t).width<=maxw)return t;let s=t;while(s.length&&ctx.measureText(s+'…').width>maxw)s=s.slice(0,-1);return s+'…';}
-function leg(ctx,x,y,t,fill,s,halo=true){ctx.save();ctx.textBaseline='top';if(halo){ctx.shadowColor='rgba(0,0,0,.72)';ctx.shadowBlur=Math.max(3,7*s);ctx.shadowOffsetY=Math.max(1,2*s);}ctx.lineWidth=Math.max(1,2.4*s);ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineJoin='round';ctx.strokeText(t,x,y);ctx.shadowColor='transparent';ctx.fillStyle=fill;ctx.fillText(t,x,y);ctx.restore();}
-function pin(ctx,x,y,size,color){const w=size*0.72,r=w/2,cx=x+r,cy=y+r;ctx.save();ctx.fillStyle=color;ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(x,cy);ctx.lineTo(x+w,cy);ctx.lineTo(cx,y+size);ctx.closePath();ctx.fill();ctx.fillStyle='#111';ctx.beginPath();ctx.arc(cx,cy,r*0.42,0,7);ctx.fill();ctx.restore();return x+w+size*0.28;}
+function leg(ctx,x,y,t,fill,s,halo=true){ctx.save();ctx.textBaseline='top';if(halo){ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=Math.max(3,7*s);ctx.shadowOffsetY=Math.max(1,2*s);}ctx.fillStyle=fill;ctx.fillText(t,x,y);ctx.restore();}
 function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-function star(ctx,cx,cy,rO,rI,pts){ctx.beginPath();for(let i=0;i<pts*2;i++){const r=i%2?rI:rO,a=Math.PI*i/pts-Math.PI/2;ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));}ctx.closePath();}
-function badge(ctx,W,text,rightX,topY,s){if(!text)return;ctx.font=`700 ${27*s}px ${FONT}`;const tw=ctx.measureText(text).width,padx=20*s,pady=11*s,w=tw+2*padx,h=27*s+2*pady,x=rightX-w;rr(ctx,x,topY,w,h,h/2);ctx.fillStyle=GOLD;ctx.fill();ctx.fillStyle='#1a140c';ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillText(text,x+padx,topY+h/2);ctx.textBaseline='alphabetic';}
+/* 字間(letter-spacing)付き描画。canvasのletterSpacingはSafari互換が不安なので手動 */
+function spW(ctx,t,ls){let w=0;for(const ch of t)w+=ctx.measureText(ch).width+ls;return Math.max(0,w-ls);}
+function spTxt(ctx,t,x,y,ls,fill,s,halo){ctx.save();ctx.textAlign='left';ctx.textBaseline='top';let cx=x;for(const ch of t){if(halo)leg(ctx,cx,y,ch,fill,s);else{ctx.fillStyle=fill;ctx.fillText(ch,cx,y);}cx+=ctx.measureText(ch).width+ls;}ctx.restore();}
+/* 元画像の下部に焼き込まれたキャプション(店名等)を沈める控えめなフェード */
+function fade(ctx,W,H,a,y0){y0=y0||0.7;const g=ctx.createLinearGradient(0,H*y0,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(1,DARK+a+')');ctx.fillStyle=g;ctx.fillRect(0,H*y0,W,H*(1-y0));}
+/* バッジ: dark=画像上（墨の半透明+金ケイ線+シャンパン文字） / ink=紙面上（墨ベタ+生成り文字） */
+function badge(ctx,W,text,anchorX,topY,s,style,alignRight){if(!text)return;if(alignRight===undefined)alignRight=true;
+  ctx.save();ctx.textAlign='left';ctx.textBaseline='top';
+  const fs=23*s,ls=2*s;ctx.font=`600 ${fs}px ${FONT}`;const tw=spW(ctx,text,ls);
+  const padx=18*s,pady=11*s,w=tw+2*padx,h=fs+2*pady,x=alignRight?anchorX-w:anchorX;
+  rr(ctx,x,topY,w,h,5*s);
+  if(style==='ink'){ctx.fillStyle=INK;ctx.fill();spTxt(ctx,text,x+padx,topY+pady,ls,IVORY,s,false);}
+  else{ctx.fillStyle='rgba(21,17,12,.5)';ctx.fill();ctx.strokeStyle='rgba(200,166,110,.9)';ctx.lineWidth=Math.max(1,1.5*s);ctx.stroke();spTxt(ctx,text,x+padx,topY+pady,ls,'#ecd3a1',s,false);}
+  ctx.restore();}
 
-function bottomScrim(ctx,W,H,it){const{s,left,right,usable}=met(W);const g=ctx.createLinearGradient(0,H*0.42,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(1,DARK+'.96)');ctx.fillStyle=g;ctx.fillRect(0,H*0.42,W,H*0.58);
-  const ss=fit(ctx,it.salon,'800',64*s,38*s,usable);const salon=ell((ctx.font=`800 ${ss}px ${FONT}`,ctx),it.salon,usable);const as=33*s;ctx.font=`700 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-as):'';
-  const gap=13*s,bp=72*s,block=ss+(area?gap+as:0);let y=H-bp-block;ctx.fillStyle=GOLD;ctx.fillRect(left,y-22*s,64*s,6*s);
+/* 1) スタンダード ★ — 柔らかい下部グラデ＋中太ゴシック＋金のヘアライン。既定 */
+function bottomScrim(ctx,W,H,it){const{s,left,right,usable}=met(W);
+  const g=ctx.createLinearGradient(0,H*0.52,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(0.55,DARK+'.5)');g.addColorStop(0.85,DARK+'.9)');g.addColorStop(1,DARK+'.97)');ctx.fillStyle=g;ctx.fillRect(0,H*0.52,W,H*0.48);
+  ctx.textBaseline='top';
+  const ss=fit(ctx,it.salon,'600',54*s,34*s,usable);ctx.font=`600 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
+  const as=25*s;ctx.font=`500 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-24*s):'';
+  const gap=15*s,block=ss+(area?gap+as:0);let y=H-66*s-block;
+  ctx.fillStyle=GOLD;ctx.fillRect(left,y-26*s,44*s,Math.max(1.5,2.5*s));
+  ctx.font=`600 ${ss}px ${FONT}`;leg(ctx,left,y,salon,'#fff',s);
+  if(area){ctx.font=`500 ${as}px ${FONT}`;spTxt(ctx,area,left,y+ss+gap,2.4*s,'rgba(255,255,255,.88)',s,true);}
+  badge(ctx,W,it.badge,right,54*s,s,'dark');}
+
+/* 2) キャプション — 中央揃えの小さな署名。写真を最大限見せる */
+function caption(ctx,W,H,it){const{s,right,usable}=met(W);
+  const g=ctx.createLinearGradient(0,H*0.62,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(0.55,DARK+'.45)');g.addColorStop(1,DARK+'.85)');ctx.fillStyle=g;ctx.fillRect(0,H*0.62,W,H*0.38);
+  ctx.textBaseline='top';ctx.textAlign='center';
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=Math.max(1,1.6*s);ctx.shadowColor='rgba(0,0,0,.5)';ctx.shadowBlur=4*s;ctx.beginPath();ctx.moveTo(W/2,H-192*s);ctx.lineTo(W/2,H-160*s);ctx.stroke();ctx.restore();
+  const ss=fit(ctx,it.salon,'500',40*s,26*s,usable);ctx.font=`500 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
+  leg(ctx,W/2,H-138*s,salon,'#fff',s);
+  if(it.area){const as=22*s;ctx.font=`400 ${as}px ${FONT}`;const area=ell(ctx,it.area,usable);leg(ctx,W/2,H-138*s+ss+12*s,area,'rgba(255,255,255,.82)',s);}
+  ctx.textAlign='left';badge(ctx,W,it.badge,right,54*s,s,'dark');}
+
+/* 3) マガジン — 上部センター構図。アイブロウ＋ケイ線＋明朝タイトル */
+function magazine(ctx,W,H,it){const{s,left,right,usable}=met(W);
+  const g=ctx.createLinearGradient(0,0,0,H*0.4);g.addColorStop(0,DARK+'.6)');g.addColorStop(1,DARK+'0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H*0.4);
+  fade(ctx,W,H,'.55');
+  ctx.textBaseline='top';
+  const ey=19*s;ctx.font=`500 ${ey}px ${FONT}`;const eyT='HAIR & BEAUTY';const eyW=spW(ctx,eyT,6*s);
+  spTxt(ctx,eyT,W/2-eyW/2,66*s,6*s,'rgba(255,255,255,.92)',s,true);
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=Math.max(1,1.5*s);ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=3*s;
+  const ry=66*s+ey*0.62;ctx.beginPath();ctx.moveTo(left,ry);ctx.lineTo(W/2-eyW/2-24*s,ry);ctx.moveTo(W/2+eyW/2+24*s,ry);ctx.lineTo(right,ry);ctx.stroke();ctx.restore();
+  ctx.textAlign='center';
+  const ss=fit(ctx,it.salon,'600',60*s,36*s,usable,MINCHO);ctx.font=`600 ${ss}px ${MINCHO}`;const salon=ell(ctx,it.salon,usable);
+  leg(ctx,W/2,66*s+ey+22*s,salon,'#fff',s);
+  if(it.area){const as=23*s;ctx.font=`500 ${as}px ${FONT}`;const area=ell(ctx,it.area,usable);leg(ctx,W/2,66*s+ey+22*s+ss+14*s,area,'rgba(255,255,255,.85)',s);}
+  ctx.textAlign='left';
+  badge(ctx,W,it.badge,right,H-114*s,s,'dark');}
+
+/* 4) シネマ — 生成りのレターボックス。下段に明朝の墨文字 */
+function letterbox(ctx,W,H,it){const{s,right,usable}=met(W);const topH=52*s,botH=186*s;
+  ctx.fillStyle=IVORY;ctx.fillRect(0,0,W,topH);ctx.fillRect(0,H-botH,W,botH);
+  ctx.textBaseline='top';ctx.textAlign='center';
+  const ss=fit(ctx,it.salon,'600',52*s,32*s,usable,MINCHO);ctx.font=`600 ${ss}px ${MINCHO}`;const salon=ell(ctx,it.salon,usable);
+  const as=23*s;ctx.font=`500 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable):'';
+  const block=ss+(area?13*s+as:0);let y=H-botH+(botH-block)/2;
+  ctx.fillStyle=INK;ctx.font=`600 ${ss}px ${MINCHO}`;ctx.fillText(salon,W/2,y);
+  if(area){ctx.fillStyle=MUTE;ctx.font=`500 ${as}px ${FONT}`;ctx.fillText(area,W/2,y+ss+13*s);}
+  ctx.textAlign='left';
+  badge(ctx,W,it.badge,right,topH+22*s,s,'dark');}
+
+/* 5) ネームカード — 左下の紙のカード。影＋金ルール */
+function namecard(ctx,W,H,it){const{s,left,right,usable}=met(W);const pad=28*s;
+  fade(ctx,W,H,'.45');
+  ctx.textBaseline='top';
+  const maxw=usable*0.82-2*pad;
+  const ss=fit(ctx,it.salon,'700',40*s,26*s,maxw);ctx.font=`700 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,maxw);const tw1=ctx.measureText(salon).width;
+  const as=22*s;ctx.font=`500 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,maxw):'';const tw2=area?ctx.measureText(area).width:0;
+  const cw=Math.max(tw1,tw2)+2*pad,ch=pad+ss+(area?13*s+2.5*s+13*s+as:0)+pad,y0=H-60*s-ch;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.28)';ctx.shadowBlur=20*s;ctx.shadowOffsetY=8*s;rr(ctx,left,y0,cw,ch,5*s);ctx.fillStyle=PAPER;ctx.fill();ctx.restore();
+  ctx.fillStyle=INK;ctx.font=`700 ${ss}px ${FONT}`;ctx.fillText(salon,left+pad,y0+pad);
+  if(area){ctx.fillStyle=GOLD;ctx.fillRect(left+pad,y0+pad+ss+13*s,34*s,Math.max(1.5,2.5*s));ctx.fillStyle=MUTE;ctx.font=`500 ${as}px ${FONT}`;ctx.fillText(area,left+pad,y0+pad+ss+13*s+2.5*s+13*s);}
+  badge(ctx,W,it.badge,right,54*s,s,'dark');}
+
+/* 6) 縦書き — 右端の縦組み明朝。英数字は90°回転で組む */
+function tategaki(ctx,W,H,it){const{s,left,right}=met(W);
+  const g=ctx.createLinearGradient(W,0,W*0.45,0);g.addColorStop(0,DARK+'.6)');g.addColorStop(1,DARK+'0)');ctx.fillStyle=g;ctx.fillRect(W*0.45,0,W*0.55,H);
+  fade(ctx,W,H,'.5');
+  function col(text,x,fs,fill,w){const lim=H-150*s;let y=66*s;
+    ctx.save();ctx.font=`${w} ${fs}px ${MINCHO}`;ctx.fillStyle=fill;ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=6*s;ctx.shadowOffsetY=2*s;
+    const runs=[];let buf='';
+    for(const ch of [...text]){if(/[0-9A-Za-z'&.\- ]/.test(ch)){buf+=ch;}else{if(buf){runs.push([buf,1]);buf='';}runs.push([ch,0]);}}
+    if(buf)runs.push([buf,1]);
+    for(const[t,lat]of runs){
+      if(lat){const tw=ctx.measureText(t).width;if(y+tw>lim)break;
+        ctx.save();ctx.translate(x,y);ctx.rotate(Math.PI/2);ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(t,0,0);ctx.restore();y+=tw+8*s;}
+      else{if(y+fs>lim)break;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(t,x,y);y+=fs*1.1;}
+    }
+    ctx.restore();}
+  col(it.salon,right-30*s,44*s,'#fff','600');
+  if(it.area)col(it.area,right-88*s,23*s,'rgba(255,255,255,.85)','500');
+  badge(ctx,W,it.badge,left,H-110*s,s,'dark',false);}
+
+/* 7) フレーム — 内側ヘアライン枠。下辺をサロン名が破って乗る */
+function frameline(ctx,W,H,it){const{s}=met(W);const m=46*s;
+  fade(ctx,W,H,'.6');
+  ctx.textBaseline='middle';ctx.textAlign='center';
+  const maxw=W-2*m-120*s;
+  const ss=fit(ctx,it.salon,'600',40*s,26*s,maxw);ctx.font=`600 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,maxw);const tw=ctx.measureText(salon).width;
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=Math.max(1,2*s);ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=5*s;
+  const gap=tw/2+26*s;
+  ctx.beginPath();ctx.moveTo(W/2-gap,H-m);ctx.lineTo(m,H-m);ctx.lineTo(m,m);ctx.lineTo(W-m,m);ctx.lineTo(W-m,H-m);ctx.lineTo(W/2+gap,H-m);ctx.stroke();ctx.restore();
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=6*s;ctx.fillStyle='#fff';ctx.font=`600 ${ss}px ${FONT}`;ctx.fillText(salon,W/2,H-m);ctx.restore();
+  if(it.area){const as=22*s;ctx.font=`500 ${as}px ${FONT}`;const area=ell(ctx,it.area,maxw);ctx.save();ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=5*s;ctx.fillStyle='rgba(255,255,255,.9)';ctx.fillText(area,W/2,H-m-ss/2-24*s);ctx.restore();}
+  ctx.textAlign='left';ctx.textBaseline='top';
+  badge(ctx,W,it.badge,W-m-20*s,m+20*s,s,'dark');}
+
+/* 8) ポラロイド — 白マット。下余白に明朝キャプション */
+function polaroid(ctx,W,H,it){const{s}=met(W);const side=38*s,top=38*s,bot=196*s;
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,top);ctx.fillRect(0,H-bot,W,bot);ctx.fillRect(0,0,side,H);ctx.fillRect(W-side,0,side,H);
+  ctx.strokeStyle='rgba(33,26,18,.1)';ctx.lineWidth=Math.max(1,1.5*s);ctx.strokeRect(side,top,W-2*side,H-top-bot);
+  ctx.textBaseline='top';ctx.textAlign='center';
+  const maxw=W-2*side-40*s;
+  const ss=fit(ctx,it.salon,'600',46*s,30*s,maxw,MINCHO);ctx.font=`600 ${ss}px ${MINCHO}`;const salon=ell(ctx,it.salon,maxw);
+  const as=23*s;ctx.font=`500 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,maxw):'';
+  const block=ss+(area?13*s+as:0);let y=H-bot+(bot-block)/2+4*s;
+  ctx.fillStyle=INK;ctx.font=`600 ${ss}px ${MINCHO}`;ctx.fillText(salon,W/2,y);
+  if(area){ctx.fillStyle=MUTE;ctx.font=`500 ${as}px ${FONT}`;ctx.fillText(area,W/2,y+ss+13*s);}
+  ctx.textAlign='left';
+  badge(ctx,W,it.badge,W-side-18*s,top+18*s,s,'dark');}
+
+/* 9) ポスター — エリアを小さなキッカーに、サロン名を特大に。声の大きい版 */
+function poster(ctx,W,H,it){const{s,left,right,usable}=met(W);
+  const g=ctx.createLinearGradient(0,H*0.34,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(0.65,DARK+'.62)');g.addColorStop(1,DARK+'.94)');ctx.fillStyle=g;ctx.fillRect(0,H*0.34,W,H*0.66);
+  ctx.textBaseline='top';
+  const ss=fit(ctx,it.salon,'800',96*s,50*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
+  const as=25*s;
+  const kick=it.area?as+20*s:0,block=kick+ss;let y=H-88*s-block;
+  if(it.area){ctx.font=`600 ${as}px ${FONT}`;const area=ell(ctx,it.area,usable-30*s);spTxt(ctx,area,left,y,3*s,GOLDL,s,true);y+=as+20*s;}
   ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,y,salon,'#fff',s);
-  if(area){const ay=y+ss+gap;const tx=pin(ctx,left,ay,as,GOLD);ctx.font=`700 ${as}px ${FONT}`;leg(ctx,tx,ay,area,'#f5f5f5',s);}
-  badge(ctx,W,it.badge,right,58*s,s);}
+  badge(ctx,W,it.badge,right,54*s,s,'dark');}
 
-function topBand(ctx,W,H,it){const{s,left,right,usable}=met(W);const ss=fit(ctx,it.salon,'800',48*s,30*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);const as=28*s;ctx.font=`600 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-as):'';
-  const gap=10*s,vpad=26*s,block=ss+(area?gap+as:0),bandH=Math.max(180*s,block+2*vpad);ctx.fillStyle=DARK+'.72)';ctx.fillRect(0,0,W,bandH);
-  let y=Math.max(vpad,(bandH-block)/2);ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,y,salon,'#fff',s,false);
-  if(area){const ay=y+ss+gap;const tx=pin(ctx,left,ay,as,'#e6e6e6');ctx.font=`600 ${as}px ${FONT}`;leg(ctx,tx,ay,area,'#e6e6e6',s,false);}
-  badge(ctx,W,it.badge,right,(bandH-58*s)/2,s);}
+/* 10) プレート — 中央下の生成りプレート＋金の上端。整った強調版 */
+function plate(ctx,W,H,it){const{s,right}=met(W);const pad=30*s;
+  fade(ctx,W,H,'.5');
+  ctx.textBaseline='top';ctx.textAlign='center';
+  const maxw=W*0.66-2*pad;
+  const ss=fit(ctx,it.salon,'700',42*s,28*s,maxw);ctx.font=`700 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,maxw);const tw1=ctx.measureText(salon).width;
+  const as=22*s;ctx.font=`500 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,maxw):'';const tw2=area?ctx.measureText(area).width:0;
+  const iw=Math.max(tw1,tw2)+2*pad,ih=pad+ss+(area?12*s+as:0)+pad*0.9,x0=(W-iw)/2,y0=H-64*s-ih;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.3)';ctx.shadowBlur=22*s;ctx.shadowOffsetY=8*s;rr(ctx,x0,y0,iw,ih,4*s);ctx.fillStyle='rgba(251,248,242,.97)';ctx.fill();ctx.restore();
+  ctx.fillStyle=GOLD;ctx.fillRect(x0,y0,iw,Math.max(2,3.5*s));
+  ctx.fillStyle=INK;ctx.font=`700 ${ss}px ${FONT}`;ctx.fillText(salon,W/2,y0+pad);
+  if(area){ctx.fillStyle=MUTE;ctx.font=`500 ${as}px ${FONT}`;ctx.fillText(area,W/2,y0+pad+ss+12*s);}
+  ctx.textAlign='left';
+  badge(ctx,W,it.badge,right,54*s,s,'dark');}
 
-function lowerThird(ctx,W,H,it){const{s,left,usable}=met(W);const pad=30*s;const ss=fit(ctx,it.salon,'800',50*s,32*s,usable-2*pad-14*s);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable-2*pad-14*s);const as=28*s;ctx.font=`700 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-2*pad-as):'';
-  const gap=10*s,inner=ss+(area?gap+as:0),cardH=inner+2*pad,y0=H-80*s-cardH;rr(ctx,left,y0,usable,cardH,18*s);ctx.fillStyle=DARK+'.9)';ctx.fill();ctx.fillStyle=GOLD;rr(ctx,left+16*s,y0+pad,5*s,cardH-2*pad,2*s);ctx.fill();
-  const tx0=left+16*s+20*s;ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,tx0,y0+pad,salon,'#fff',s,false);
-  if(area){const ay=y0+pad+ss+gap;const px=pin(ctx,tx0,ay,as,GOLD);ctx.font=`700 ${as}px ${FONT}`;leg(ctx,px,ay,area,'#eee',s,false);}}
-
-function frosted(ctx,W,H,it,img){const{s,left,right,usable}=met(W);const ss=fit(ctx,it.salon,'800',54*s,34*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);const as=31*s;ctx.font=`700 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-as):'';
-  const gap=11*s,block=ss+(area?gap+as:0),barH=block+56*s,y0=H-barH;
-  ctx.save();rr(ctx,0,y0,W,barH,0);ctx.clip();ctx.filter=`blur(${18*s}px)`;if(img)ctx.drawImage(img,0,0,W,H);ctx.filter='none';ctx.fillStyle='rgba(12,10,9,.62)';ctx.fillRect(0,y0,W,barH);ctx.restore();
-  ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(0,y0,W,Math.max(1,2*s));
-  let ty=y0+26*s;ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,ty,salon,'#fff',s,false);
-  if(area){const ay=ty+ss+gap;const tx=pin(ctx,left,ay,as,GOLD);ctx.font=`700 ${as}px ${FONT}`;leg(ctx,tx,ay,area,'#f2f2f2',s,false);}
-  badge(ctx,W,it.badge,right,58*s,s);}
-
-function cornerTag(ctx,W,H,it){const{s,left,right,usable}=met(W);const label=it.salon+(it.area?'  ·  '+it.area:'');const fs=fit(ctx,label,'700',34*s,24*s,usable);ctx.font=`700 ${fs}px ${FONT}`;const lab=ell(ctx,label,usable);const padx=22*s,pady=14*s,pinw=fs*0.72+fs*0.28,w=pinw+ctx.measureText(lab).width+2*padx,h=fs+2*pady,x0=left,y0=40*s;
-  rr(ctx,x0,y0,w,h,h/2);ctx.fillStyle=DARK+'.82)';ctx.fill();const tx=pin(ctx,x0+padx,y0+pady,fs,GOLD);ctx.font=`700 ${fs}px ${FONT}`;ctx.textBaseline='top';leg(ctx,tx,y0+pady,lab,'#fff',s,false);
-  badge(ctx,W,it.badge,right,y0,s);}
-
-function editorial(ctx,W,H,it){const{s,left,right,usable}=met(W);const g=ctx.createLinearGradient(0,H*0.42,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(1,DARK+'.97)');ctx.fillStyle=g;ctx.fillRect(0,H*0.42,W,H*0.58);
-  const ss=fit(ctx,it.salon,'800',78*s,40*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
-  const ashort=(it.area||'').split('・')[0];const adisp=[...ashort].join(' ');const as=26*s;ctx.font=`700 ${as}px ${FONT}`;const area=ell(ctx,adisp,usable);
-  const rg=22*s,bp=76*s,block=as+rg+ss;let y=H-bp-block;ctx.font=`700 ${as}px ${FONT}`;leg(ctx,left,y,area,GOLD,s,false);
-  const ry=y+as+rg/2;ctx.fillStyle='rgba(255,255,255,.42)';ctx.fillRect(left,ry,right-left,Math.max(2,3*s));
-  ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,ry+rg/2,salon,'#fff',s);
-  badge(ctx,W,it.badge,right,56*s,s);}
-
-/* ---- 極端に目立つ帯（🔥 loud）---- */
-function boldBar(ctx,W,H,it){const{s,left,right,usable}=met(W);
-  const ss=fit(ctx,it.salon,'800',66*s,40*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
-  const as=32*s;ctx.font=`800 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-as):'';
-  const gap=10*s,vpad=30*s,block=ss+(area?gap+as:0),barH=block+2*vpad,y0=H-barH;
-  ctx.fillStyle=ACCENT;ctx.fillRect(0,y0,W,barH);ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(0,y0,W,Math.max(2,4*s));
-  let y=y0+vpad;ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,y,salon,'#fff',s,false);
-  if(area){const ay=y+ss+gap;const tx=pin(ctx,left,ay,as,'#fff');ctx.font=`800 ${as}px ${FONT}`;leg(ctx,tx,ay,area,'#fff',s,false);}
-  badge(ctx,W,it.badge,right,56*s,s);}
-
-function billboard(ctx,W,H,it){const{s,left,right,usable}=met(W);const blockH=H*0.40,y0=H-blockH;
-  ctx.fillStyle=DARK+'.94)';ctx.fillRect(0,y0,W,blockH);ctx.fillStyle=ACCENT;ctx.fillRect(0,y0,W,Math.max(4,7*s));
-  const ss=fit(ctx,it.salon,'800',88*s,44*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
-  const as=32*s;ctx.font=`700 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-as):'';
-  const gap=14*s,block=ss+(area?gap+as:0);let y=y0+(blockH-block)/2;
-  ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,y,salon,'#fff',s,false);
-  if(area){const ay=y+ss+gap;const tx=pin(ctx,left,ay,as,ACCENT2);ctx.font=`700 ${as}px ${FONT}`;leg(ctx,tx,ay,area,'#f2f2f2',s,false);}
-  badge(ctx,W,it.badge,right,56*s,s);}
-
-function burst(ctx,W,H,it){const{s,left,right,usable}=met(W);
-  const g=ctx.createLinearGradient(0,H*0.6,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(1,DARK+'.92)');ctx.fillStyle=g;ctx.fillRect(0,H*0.6,W,H*0.4);
-  const ss=fit(ctx,it.salon,'800',46*s,30*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
-  const as=27*s;ctx.font=`700 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-as):'';
-  const gap=8*s,block=ss+(area?gap+as:0);let y=H-64*s-block;ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,y,salon,'#fff',s);
-  if(area){const ay=y+ss+gap;const tx=pin(ctx,left,ay,as,GOLD);ctx.font=`700 ${as}px ${FONT}`;leg(ctx,tx,ay,area,'#eee',s);}
-  const text=(it.badge||'NEW'),rO=94*s,rI=76*s,cx=right-rO,cy=40*s+rO;
-  star(ctx,cx,cy,rO,rI,12);ctx.fillStyle=ACCENT;ctx.fill();
-  ctx.save();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=Math.max(1,2*s);star(ctx,cx,cy,rI*0.92,rI*0.72,12);ctx.stroke();ctx.restore();
-  ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';const fs=fit(ctx,text,'800',34*s,15*s,rI*1.5);ctx.font=`800 ${fs}px ${FONT}`;ctx.fillText(text,cx,cy);
-  ctx.textAlign='left';ctx.textBaseline='alphabetic';}
-
-function ribbon(ctx,W,H,it){const{s,left,right,usable}=met(W);
-  const g=ctx.createLinearGradient(0,H*0.6,0,H);g.addColorStop(0,DARK+'0)');g.addColorStop(1,DARK+'.9)');ctx.fillStyle=g;ctx.fillRect(0,H*0.6,W,H*0.4);
-  const ss=fit(ctx,it.salon,'800',44*s,30*s,usable);ctx.font=`800 ${ss}px ${FONT}`;const salon=ell(ctx,it.salon,usable);
-  const as=27*s;ctx.font=`700 ${as}px ${FONT}`;const area=it.area?ell(ctx,it.area,usable-as):'';
-  const gap=8*s,block=ss+(area?gap+as:0);let y=H-64*s-block;ctx.font=`800 ${ss}px ${FONT}`;leg(ctx,left,y,salon,'#fff',s);
-  if(area){const ay=y+ss+gap;const tx=pin(ctx,left,ay,as,GOLD);ctx.font=`700 ${as}px ${FONT}`;leg(ctx,tx,ay,area,'#eee',s);}
-  const text=(it.badge||'NEW');ctx.save();const bw=70*s;ctx.translate(-8*s,H*0.30);ctx.rotate(-Math.PI/4);
-  ctx.fillStyle=ACCENT;ctx.fillRect(-W*0.25,-bw/2,W*0.9,bw);
-  ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(-W*0.25,-bw/2,W*0.9,Math.max(1,2*s));ctx.fillRect(-W*0.25,bw/2-Math.max(1,2*s),W*0.9,Math.max(1,2*s));
-  ctx.fillStyle='#fff';ctx.font=`800 ${34*s}px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,W*0.14,0);
-  ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';}
-
-const RENDER={bottom_scrim:bottomScrim,top_band:topBand,lower_third:lowerThird,frosted_bar:frosted,corner_tag:cornerTag,editorial:editorial,bold_bar:boldBar,billboard:billboard,burst:burst,ribbon:ribbon};
+const RENDER={bottom_scrim:bottomScrim,caption:caption,magazine:magazine,letterbox:letterbox,namecard:namecard,tategaki:tategaki,frameline:frameline,polaroid:polaroid,poster:poster,plate:plate};
 
 async function draw(canvas,it,px){const im=await loadImgSrc(it.img);const W=px,H=Math.round(px*1.25);canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,H);if(im)ctx.drawImage(im,0,0,W,H);else{ctx.fillStyle='#bbb';ctx.fillRect(0,0,W,H);}if(it.enabled)(RENDER[it.design]||bottomScrim)(ctx,W,H,it,im);}
 function drawPlain(canvas,src,px){loadImgSrc(src).then(im=>{const W=px,H=Math.round(px*1.25);canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d');if(im)ctx.drawImage(im,0,0,W,H);else{ctx.fillStyle='#bbb';ctx.fillRect(0,0,W,H);}});}

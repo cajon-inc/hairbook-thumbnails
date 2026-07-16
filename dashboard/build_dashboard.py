@@ -23,8 +23,8 @@ N = 24
 TARGET_W = 420
 
 # 一部は「すでに個別編集済み」の状態にして、混在した一覧を見せる
-PRESET = {2: ("lower_third", ""), 5: ("editorial", ""), 8: ("bottom_scrim", "新規20%OFF"),
-          11: ("corner_tag", ""), 14: ("frosted_bar", ""), 17: ("top_band", "")}
+PRESET = {2: ("magazine", ""), 5: ("letterbox", ""), 8: ("poster", "新規20%OFF"),
+          11: ("namecard", ""), 14: ("tategaki", ""), 17: ("caption", "")}
 
 
 def data_uri(path: Path, w: int = TARGET_W) -> str:
