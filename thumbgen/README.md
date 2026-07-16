@@ -69,19 +69,36 @@ override タブへ upsert → 既存の H1 数式がそのまま配信に反映
 
 | ファイル | 役割 |
 |---|---|
-| `band_overlay.py` | **方針2コア**。寸法適応・セーフエリア準拠の帯合成。`BandSpec` 差替でパターンA〜D展開 |
-| `frame_quality.py` | **方針1コア**。品質スコアリング（軽量ヒューリスティック＋Claude Vision プラグイン口） |
-| `generate_samples.py` | PoC生成。既存64枚に帯合成→Before/After＋9:16見切れシミュレーション |
-| `samples/` | 生成物（`contact_sheet.png` / `safearea_9x16.png` / `after/` / `quality_report.json`） |
-| `requirements.txt` | 依存（Pillow, numpy ほか） |
-| `workflow.draft.yml` | **非稼働**のワークフロー草案（承認・シークレット確保後に `.github/workflows/` へ） |
+| `enrich.py` | **本番パイプライン**。全件に推奨レイアウト（下部スクリム）の帯を付与し `enriched/` に出力・override upsert |
+| `overlays.py` | 広告CRデザイン方向6案。`bottom_scrim`(推奨)/`lower_third`/`frosted_bar`/`corner_tag`/`editorial`/`top_band` |
+| `improve.py` | **低情報画像の改善**。broken=動画再抽出フラグ／low_info=オートコントラスト等で底上げ |
+| `build_results_index.py` | 更新結果の一覧生成（`enriched/RESULTS.md`・`index.html`・共有用ギャラリー） |
+| `band_overlay.py` | 帯合成（上部帯）。`BandSpec` 差替でパターンA〜D（サロン名/価格/特典/メニュー） |
+| `frame_quality.py` | 品質スコアリング（軽量ヒューリスティック＋Claude Vision プラグイン口） |
+| `generate_samples.py` / `gen_*` | 各種PoC・資料モックアップ生成 |
+| `design_brief.*` / `cr_directions.*` / `build_pdf.sh` | 社内説明資料（HTML/PDF）とビルド |
 
-### 実行（PoC）
+定期実行は `../.github/workflows/thumbnail-enrich.yml`（毎日 JST 6:40・autofixの後段）。
+
+### 定期エンリッチ（本番パイプライン）
+```
+元サムネ(<hash>.jpg / autofix再抽出) or フィードの image_link
+  → improve: 低情報なら改善（暗い/白飛び/眠い→補正、破損相当→要再抽出）
+  → overlays.bottom_scrim: サロン名＋エリアの帯を合成
+  → content-hash で変化時のみ enriched/<hash>.jpg を更新
+  → thumbnail_override に id→enriched raw URL を upsert（本番H1が最優先参照）
+  → results.json → 一覧(RESULTS.md / index.html)
+```
+- `GOOGLE_SHEETS_KEY_JSON` があれば **live**（全商品）、無ければ **dry-run**（ローカル素材・ダミー文言）。
+- 安全ガード（`MIN_PRODUCTS`）・段階ロールアウト（`--rollout`）・即ロールバック（override除去）対応。
+
+### 実行
 ```bash
-pip install -r requirements.txt          # + 日本語フォント(fonts-noto-cjk)
-python3 generate_samples.py --limit 12   # Before/After と 9:16 検証を samples/ に生成
-python3 frame_quality.py report          # 既存サムネの品質分布
-python3 band_overlay.py in.jpg out.jpg --salon "サロン名" --area "エリア"
+pip install -r requirements.txt                 # + 日本語フォント(fonts-noto-cjk)
+python3 enrich.py --dry-run                      # ローカル素材で全件エンリッチ → enriched/
+python3 build_results_index.py                   # enriched/ の結果を一覧化
+python3 overlays.py in.jpg --layout bottom_scrim --salon "サロン名" --area "エリア" -o out.jpg
+python3 improve.py in.jpg out.jpg                # 低情報画像の改善だけ試す
 ```
 
 ---

@@ -5,3 +5,10 @@ thumbgen/fonts/
 thumbgen/design_brief.html
 thumbgen/cr_directions.html
 thumbgen/samples/pdf/*_20*.pdf
+
+# enriched/ の生成物はワークフローが -f で自動コミット（ローカルdry-run出力は追跡しない）
+enriched/*.jpg
+enriched/results.json
+enriched/RESULTS.md
+enriched/index.html
+enriched/results_gallery.html
