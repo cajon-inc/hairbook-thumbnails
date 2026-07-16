@@ -12,3 +12,7 @@ enriched/results.json
 enriched/RESULTS.md
 enriched/index.html
 enriched/results_gallery.html
+
+# 管理画面プロトタイプの生成物（build_dashboard.py で再生成）
+dashboard/creative.html
+creative_config.json

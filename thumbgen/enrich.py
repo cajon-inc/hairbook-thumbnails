@@ -151,17 +151,29 @@ def upsert_override(gc, entries: list[dict]) -> None:
 # ─────────────────────────────────────────────
 # メイン
 # ─────────────────────────────────────────────
+def load_creative_config() -> dict:
+    """管理画面が書き出す id別設定 {id: {design, salon, area, badge, enabled}} を読む。"""
+    for p in (REPO / "creative_config.json", ROOT / "creative_config.json"):
+        if p.exists():
+            try:
+                return json.loads(p.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+
 def run(dry_run: bool, limit: int, rollout: float, design: str) -> dict:
     gc = None if dry_run else _gspread_from_env()
     items = worklist_dry() if gc is None else worklist_live(gc)
     mode = "dry-run" if (dry_run or gc is None) else "live"
     if limit:
         items = items[:limit]
+    config = load_creative_config()   # 管理画面の個別選択（無ければ全件デフォルト）
 
     ENRICHED.mkdir(exist_ok=True)
     results, entries = [], []
     counts = {"total": 0, "updated": 0, "unchanged": 0, "enhanced": 0,
-              "needs_reextract": 0, "skipped_rollout": 0, "failed": 0}
+              "needs_reextract": 0, "disabled": 0, "skipped_rollout": 0, "failed": 0}
 
     for it in items:
         counts["total"] += 1
@@ -170,12 +182,22 @@ def run(dry_run: bool, limit: int, rollout: float, design: str) -> dict:
         if not in_rollout(h, rollout):
             counts["skipped_rollout"] += 1
             continue
+        cfg = config.get(pid, {})
+        if cfg.get("enabled") is False:                     # 管理画面で無効化 → 帯を付けない
+            counts["disabled"] += 1
+            results.append({"id": pid, "hash": h, "salon": it["salon"], "area": it["area"],
+                            "verdict": "-", "action": "disabled", "changed": False})
+            continue
+        item_design = cfg.get("design") or design           # 個別デザイン優先
+        salon = cfg.get("salon") or it["salon"]
+        area = cfg.get("area") if cfg.get("area") is not None else it["area"]
+        badge = cfg.get("badge", "")
         try:
             data = load_image(it["image_link"])
             im = Image.open(io.BytesIO(data))
             a = assess(im)
             improved, action = improve(im, a)
-            banded = overlays.render(improved, design, it["salon"], it["area"])
+            banded = overlays.render(improved, item_design, salon, area, badge)
             buf = io.BytesIO(); banded.save(buf, "JPEG", quality=88)
             out_bytes = buf.getvalue()
         except Exception as e:
@@ -196,7 +218,8 @@ def run(dry_run: bool, limit: int, rollout: float, design: str) -> dict:
         if action == "needs_reextract":
             counts["needs_reextract"] += 1
 
-        results.append({"id": pid, "hash": h, "salon": it["salon"], "area": it["area"],
+        results.append({"id": pid, "hash": h, "salon": salon, "area": area,
+                        "design": item_design, "badge": badge,
                         "verdict": a["verdict"], "mean": a["mean"], "std": a["std"],
                         "action": action, "changed": changed,
                         "url": f"{RAW_BASE}/enriched/{h}.jpg"})
