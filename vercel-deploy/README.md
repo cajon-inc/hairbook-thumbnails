@@ -6,20 +6,26 @@
 - `creative/index.html` … 管理画面（自己完結・`dashboard/build_dashboard.py` で再生成）
 - `vercel.json` … `/` → `/creative` リダイレクト
 
-## デプロイ方法（いずれか）
+## デプロイ方法
 
-### A. 既存の hairbook-dashboard プロジェクトに載せる（同じURLになる・推奨）
-Vercelプロジェクト `hairbook-dashboard` を所有するアカウントで:
+### A. 既存プロジェクトに /creative を共存させる（同じURL・推奨・非破壊）
+`hairbook-dashboard` のデプロイ元リポジトリに、この1ファイルを置くだけ:
+```
+<デプロイ元リポ>/public/creative/index.html   ← creative/index.html をコピー
+```
+コミット→push で Vercel が自動デプロイ。既存アプリのルートと**共存**し、
+`/creative` で配信される（ビルド設定の変更不要）。
+
+> ⚠️ 注意: `vercel-deploy/` フォルダを単体で `npx vercel --prod` して既存プロジェクトに
+> 紐づけると、**既存ダッシュボード全体がこの静的ページに置き換わる**。既存アプリを保つ場合は
+> 必ず上記A（リポジトリに public/creative/ として追加）で行うこと。
+
+### B. 別URLのプレビューとして新規デプロイ（既存に触れない）
+既存アプリを一切変更せず、別プロジェクト/別URLで公開したい場合のみ:
 ```bash
 cd vercel-deploy
-npx vercel --prod   # プロジェクト選択で hairbook-dashboard を指定
+npx vercel --prod   # 新規プロジェクト名を指定（例: hairbook-creative）
 ```
-※ 既存プロジェクトが Next.js アプリの場合は、このHTMLをそのリポジトリの
-`public/creative/index.html` に置くだけで `/creative` で配信される（ビルド不要・既存ルートと共存）。
-
-### B. リポジトリ連携（自動デプロイ）
-このフォルダ（または public/creative/ に置いたHTML）をデプロイ元リポジトリへコミット
-→ Vercel が自動デプロイ。
 
 > この管理画面は完全に静的（外部API不要・編集はlocalStorage保存）。
 > 本番データ連携版（フィード読込・creative_config保存）は dashboard/IMPLEMENTATION_PLAN.md 参照。
