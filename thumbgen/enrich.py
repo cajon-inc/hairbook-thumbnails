@@ -192,8 +192,11 @@ def run(dry_run: bool, limit: int, rollout: float, design: str) -> dict:
         salon = cfg.get("salon") or it["salon"]
         area = cfg.get("area") if cfg.get("area") is not None else it["area"]
         badge = cfg.get("badge", "")
+        # 管理画面で選んだ画像ソース（入稿/別フレーム/AI生成のホスト先URL）を優先
+        src_link = cfg.get("source_url") or cfg.get("source") or ""
+        src_link = src_link if isinstance(src_link, str) and (src_link.startswith("http") or src_link.startswith("/")) else it["image_link"]
         try:
-            data = load_image(it["image_link"])
+            data = load_image(src_link)
             im = Image.open(io.BytesIO(data))
             a = assess(im)
             improved, action = improve(im, a)

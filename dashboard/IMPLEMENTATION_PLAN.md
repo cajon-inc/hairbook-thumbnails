@@ -43,12 +43,19 @@
 ```json
 {
   "44528_01KJ...": { "design": "bottom_scrim", "salon": "hair salon Lumière",
-    "area": "東京都渋谷区・表参道", "badge": "新規20%OFF", "enabled": true },
+    "area": "東京都渋谷区・表参道", "badge": "新規20%OFF", "enabled": true,
+    "source_url": "https://raw.githubusercontent.com/.../sources/<hash>.jpg" },
   "44530_01KQ...": { "enabled": false }
 }
 ```
-- `design`: bottom_scrim(推奨) / lower_third / top_band / frosted_bar / corner_tag / editorial
+- `design`: 10種。標準= bottom_scrim(推奨) / lower_third / top_band / frosted_bar / corner_tag / editorial、
+  **目立つ系**= bold_bar / billboard / burst / ribbon。
+- `source_url`（任意）: 管理画面で選んだ元画像（入稿/動画別フレーム/AI生成）のホスト先。省略時は既定のフィード画像。
 - 省略キーは既定にフォールバック（`enabled` 既定 true、`design` 既定 bottom_scrim）。
+
+### 画像ソースのホスティング
+管理画面のアップロード/生成画像は保存が必要。`sources/<hash>.jpg` として本リポジトリにコミット（配信と同じraw方式）
+し、`source_url` に格納。動画別フレームはサーバ側 ffmpeg 抽出（autofix v3 と同系）、AI生成は生成APIの結果を同様に保存。
 
 ---
 

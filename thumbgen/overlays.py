@@ -17,6 +17,7 @@ band_overlay.py の「上部ソリッド帯」を基準に、より広告クリ�
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import numpy as np
@@ -32,6 +33,8 @@ GOLD = (206, 169, 96)
 WHITE = (255, 255, 255)
 LIGHT = (232, 232, 232)
 DARK = (17, 15, 13)
+ACCENT = (228, 50, 43)      # 目立つ帯用のビビッドな赤（バーミリオン）
+ACCENT2 = (244, 180, 0)     # 差し色の黄
 
 
 # ─────────────────────────────────────────────
@@ -278,6 +281,115 @@ def _corner_badge(d, text, right_x, top_y, scale):
            text, font=f, fill=(26, 20, 12))
 
 
+def _star_points(cx, cy, r_o, r_i, pts):
+    out = []
+    for i in range(pts * 2):
+        r = r_i if i % 2 else r_o
+        a = math.pi * i / pts - math.pi / 2
+        out.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return out
+
+
+# ─────────────────────────────────────────────
+# 目立つ帯（loud）: bold_bar / billboard / burst / ribbon
+# ─────────────────────────────────────────────
+def bold_bar(im, salon, area="", badge=""):
+    base = im.convert("RGBA"); W, H = base.size
+    scale, inset, left, right, usable = _metrics(W)
+    m = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    sf = _fit_font(m, salon, _FONT_CANDIDATES_BOLD, int(66 * scale), int(40 * scale), usable)
+    salon = _ellipsize(m, salon, sf, usable)
+    af = _load_font(_FONT_CANDIDATES_BOLD, int(32 * scale))
+    area = _ellipsize(m, area, af, usable - int(32 * scale)) if area else ""
+    sh = m.textbbox((0, 0), salon, font=sf)[3]; ah = m.textbbox((0, 0), area or "あ", font=af)[3]
+    gap = int(10 * scale); vpad = int(30 * scale); block = sh + (gap + ah if area else 0)
+    bar_h = block + 2 * vpad; y0 = H - bar_h
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
+    od.rectangle([0, y0, W, H], fill=ACCENT + (255,))
+    od.rectangle([0, y0, W, y0 + max(2, int(4 * scale))], fill=(255, 255, 255, 235))
+    base = Image.alpha_composite(base, ov); d = ImageDraw.Draw(base, "RGBA")
+    y = y0 + vpad; d.text((left, y), salon, font=sf, fill=WHITE)
+    if area:
+        ay = y + sh + gap; tx = _draw_pin(d, left, ay, ah, WHITE); d.text((tx, ay), area, font=af, fill=WHITE)
+    if badge:
+        _corner_badge(ImageDraw.Draw(base, "RGBA"), badge, right, int(56 * scale), scale)
+    return base.convert("RGB")
+
+
+def billboard(im, salon, area="", badge=""):
+    base = im.convert("RGBA"); W, H = base.size
+    scale, inset, left, right, usable = _metrics(W)
+    block_h = int(H * 0.40); y0 = H - block_h
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
+    od.rectangle([0, y0, W, H], fill=(15, 13, 11, 240))
+    od.rectangle([0, y0, W, y0 + max(4, int(7 * scale))], fill=ACCENT + (255,))
+    base = Image.alpha_composite(base, ov)
+    m = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    sf = _fit_font(m, salon, _FONT_CANDIDATES_BOLD, int(88 * scale), int(44 * scale), usable)
+    salon = _ellipsize(m, salon, sf, usable)
+    af = _load_font(_FONT_CANDIDATES_BOLD, int(32 * scale))
+    area = _ellipsize(m, area, af, usable - int(32 * scale)) if area else ""
+    sh = m.textbbox((0, 0), salon, font=sf)[3]; ah = m.textbbox((0, 0), area or "あ", font=af)[3]
+    gap = int(14 * scale); block = sh + (gap + ah if area else 0); y = y0 + (block_h - block) // 2
+    d = ImageDraw.Draw(base, "RGBA")
+    _legible(base, (left, y), salon, sf, WHITE, scale, halo=False)
+    if area:
+        ay = y + sh + gap; tx = _draw_pin(d, left, ay, ah, ACCENT2); d.text((tx, ay), area, font=af, fill=(242, 242, 242))
+    if badge:
+        _corner_badge(ImageDraw.Draw(base, "RGBA"), badge, right, int(56 * scale), scale)
+    return base.convert("RGB")
+
+
+def burst(im, salon, area="", badge=""):
+    base = im.convert("RGBA"); W, H = base.size
+    scale, inset, left, right, usable = _metrics(W)
+    base = Image.alpha_composite(base, _vgrad((W, H), int(H * 0.6), H, 235))
+    d = ImageDraw.Draw(base, "RGBA"); m = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    sf = _fit_font(m, salon, _FONT_CANDIDATES_BOLD, int(46 * scale), int(30 * scale), usable)
+    salon = _ellipsize(m, salon, sf, usable)
+    af = _load_font(_FONT_CANDIDATES_REG, int(27 * scale))
+    area = _ellipsize(m, area, af, usable - int(27 * scale)) if area else ""
+    sh = m.textbbox((0, 0), salon, font=sf)[3]; ah = m.textbbox((0, 0), area or "あ", font=af)[3]
+    gap = int(8 * scale); block = sh + (gap + ah if area else 0); y = H - int(64 * scale) - block
+    _legible(base, (left, y), salon, sf, WHITE, scale)
+    if area:
+        ay = y + sh + gap; tx = _draw_pin(d, left, ay, ah, GOLD); _legible(base, (tx, ay), area, af, (235, 235, 235), scale)
+    text = badge or "NEW"; r_o = int(94 * scale); r_i = int(76 * scale)
+    cx = right - r_o; cy = int(40 * scale) + r_o
+    d.polygon(_star_points(cx, cy, r_o, r_i, 12), fill=ACCENT + (255,))
+    bf = _fit_font(m, text, _FONT_CANDIDATES_BOLD, int(34 * scale), int(15 * scale), int(r_i * 1.5))
+    bb = m.textbbox((0, 0), text, font=bf)
+    d.text((cx - (bb[2] - bb[0]) / 2 - bb[0], cy - (bb[3] - bb[1]) / 2 - bb[1]), text, font=bf, fill=WHITE)
+    return base.convert("RGB")
+
+
+def ribbon(im, salon, area="", badge=""):
+    base = im.convert("RGBA"); W, H = base.size
+    scale, inset, left, right, usable = _metrics(W)
+    base = Image.alpha_composite(base, _vgrad((W, H), int(H * 0.6), H, 230))
+    d = ImageDraw.Draw(base, "RGBA"); m = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    sf = _fit_font(m, salon, _FONT_CANDIDATES_BOLD, int(44 * scale), int(30 * scale), usable)
+    salon = _ellipsize(m, salon, sf, usable)
+    af = _load_font(_FONT_CANDIDATES_REG, int(27 * scale))
+    area = _ellipsize(m, area, af, usable - int(27 * scale)) if area else ""
+    sh = m.textbbox((0, 0), salon, font=sf)[3]; ah = m.textbbox((0, 0), area or "あ", font=af)[3]
+    gap = int(8 * scale); block = sh + (gap + ah if area else 0); y = H - int(64 * scale) - block
+    _legible(base, (left, y), salon, sf, WHITE, scale)
+    if area:
+        ay = y + sh + gap; tx = _draw_pin(d, left, ay, ah, GOLD); _legible(base, (tx, ay), area, af, (235, 235, 235), scale)
+    # 斜めリボン（別レイヤに描いて回転→左上に合成）
+    text = badge or "NEW"; L = int(W * 0.62); bw = int(70 * scale)
+    rl = Image.new("RGBA", (L, L), (0, 0, 0, 0)); rd = ImageDraw.Draw(rl); cyl = int(L * 0.30)
+    rd.rectangle([0, cyl - bw // 2, L, cyl + bw // 2], fill=ACCENT + (255,))
+    rd.rectangle([0, cyl - bw // 2, L, cyl - bw // 2 + max(1, int(2 * scale))], fill=(255, 255, 255, 210))
+    rd.rectangle([0, cyl + bw // 2 - max(1, int(2 * scale)), L, cyl + bw // 2], fill=(255, 255, 255, 210))
+    bf = _load_font(_FONT_CANDIDATES_BOLD, int(34 * scale)); bb = rd.textbbox((0, 0), text, font=bf)
+    rd.text(((L - (bb[2] - bb[0])) // 2, cyl - (bb[3] - bb[1]) // 2 - bb[1]), text, font=bf, fill=WHITE)
+    rot = rl.rotate(45, expand=True, resample=Image.BICUBIC)
+    base.alpha_composite(rot, (int(-L * 0.34), int(-L * 0.02)))
+    return base.convert("RGB")
+
+
 LAYOUTS = {
     "top_band": top_band,
     "bottom_scrim": bottom_scrim,
@@ -285,6 +397,10 @@ LAYOUTS = {
     "frosted_bar": frosted_bar,
     "corner_tag": corner_tag,
     "editorial": editorial,
+    "bold_bar": bold_bar,
+    "billboard": billboard,
+    "burst": burst,
+    "ribbon": ribbon,
 }
 
 
