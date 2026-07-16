@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>クリエイティブ管理 — カタログサムネ</title>
 <style>
 :root{
@@ -362,11 +367,34 @@ function buildSources(v){const wrap=document.getElementById('dSources');wrap.inn
   });}
 function afterSourceChange(){buildSources(curView());refreshPreview();buildDesignOpts(curView());}
 function addCandidate(label,src,key,select){candidates[cur]=candidates[cur]||[];candidates[cur].push({label,src,key});if(select!==false){sourceSel[cur]=src;sourceLabel[cur]=label;}afterSourceChange();}
-function cropVariant(im,offFrac){const cw=im.width,ch=Math.round(im.height*0.8),sy=Math.round((im.height-ch)*offFrac);const cv=document.createElement('canvas');cv.width=cw;cv.height=Math.round(cw*1.25);cv.getContext('2d').drawImage(im,0,sy,cw,ch,0,0,cv.width,cv.height);return cv.toDataURL('image/jpeg',0.82);}
+/* 疑似フレーム: 縦横比4:5を保ったまま (縦位置oy, ズームzoom, 横位置ox) を変えて切り出す */
+function frameVariant(im,oy,zoom,ox){const AR=0.8;let w=Math.min(im.width,im.height*AR)/zoom,h=w/AR;if(h>im.height){h=im.height/zoom;w=h*AR;}const sx=(im.width-w)*ox,sy=(im.height-h)*oy;const cv=document.createElement('canvas');cv.width=im.width;cv.height=Math.round(im.width*1.25);cv.getContext('2d').drawImage(im,sx,sy,w,h,0,0,cv.width,cv.height);return cv.toDataURL('image/jpeg',0.82);}
+const FRAME_PARAMS=[ /* [縦位置, ズーム, 横位置] — 先頭3つは旧フレームA/B/C相当 */
+ [0.05,1.25,0.5],[0.50,1.25,0.5],[0.92,1.25,0.5],
+ [0.15,1.12,0.3],[0.15,1.12,0.7],[0.85,1.12,0.5],
+ [0.30,1.40,0.25],[0.30,1.40,0.75],[0.65,1.40,0.5],
+ [0.05,1.60,0.2],[0.50,1.60,0.8],[0.95,1.60,0.5],
+ [0.25,1.18,0.1],[0.25,1.18,0.9],[0.75,1.18,0.5],
+ [0.45,1.80,0.35],[0.45,1.80,0.65],[0.10,1.50,0.5],
+ [0.90,1.30,0.2],[0.90,1.30,0.8],[0.55,1.22,0.5],
+ [0.20,1.70,0.5],[0.78,1.55,0.15],[0.78,1.55,0.85]];
+function frameParams(i){if(i<FRAME_PARAMS.length)return FRAME_PARAMS[i];const fr=x=>x-Math.floor(x);return[fr(i*0.618+0.05),1.1+0.7*fr(i*0.382+0.17),fr(i*0.754+0.31)];}
+function frameLabel(i){return 'フレーム'+(i<26?String.fromCharCode(65+i):String(i+1));}
 function aiVariant(im){const cv=document.createElement('canvas');cv.width=im.width;cv.height=Math.round(im.width*1.25);const ctx=cv.getContext('2d');ctx.filter='saturate(1.55) contrast(1.12) brightness(1.03)';ctx.drawImage(im,0,0,cv.width,cv.height);ctx.filter='none';const g=ctx.createRadialGradient(cv.width/2,cv.height/2,cv.width*0.3,cv.width/2,cv.height/2,cv.width*0.78);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.32)');ctx.fillStyle=g;ctx.fillRect(0,0,cv.width,cv.height);return cv.toDataURL('image/jpeg',0.85);}
 document.getElementById('upFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>addCandidate('入稿',r.result,'upload');r.readAsDataURL(f);e.target.value='';});
-document.getElementById('genFrames').addEventListener('click',async()=>{const im=await loadImgSrc(sourceSel[cur]||baseItem(cur).img);if(!im)return;
-  candidates[cur]=candidates[cur]||[];[[0.05,'フレームA'],[0.5,'フレームB'],[0.92,'フレームC']].forEach(([o,l])=>candidates[cur].push({label:l,src:cropVariant(im,o),key:'frame'}));afterSourceChange();});
+let frameSeq={}; // id -> 次に生成するフレーム番号（クリックごとに続きから別フレームを出す）
+document.getElementById('genFrames').addEventListener('click',async()=>{
+  const selSrc=sourceSel[cur];
+  const selC=(candidates[cur]||[]).find(c=>c.src===selSrc);
+  // 生成済みフレーム選択中でも、クロップを重ね掛けせず親画像から切り出す
+  const baseSrc=(selC&&selC.key==='frame'&&selC.parent)?selC.parent:(selSrc||baseItem(cur).img);
+  const im=await loadImgSrc(baseSrc);if(!im)return;
+  candidates[cur]=candidates[cur]||[];
+  const n0=frameSeq[cur]||0;
+  for(let k=0;k<6;k++){const i=n0+k;const[oy,zm,ox]=frameParams(i);
+    candidates[cur].push({label:frameLabel(i),src:frameVariant(im,oy,zm,ox),key:'frame',parent:baseSrc});}
+  frameSeq[cur]=n0+6;afterSourceChange();
+  const sw=document.getElementById('dSources');sw.scrollLeft=sw.scrollWidth;});
 document.getElementById('genAI').addEventListener('click',async()=>{const im=await loadImgSrc(sourceSel[cur]||baseItem(cur).img);if(!im)return;addCandidate('AI(サンプル)',aiVariant(im),'ai');});
 
 document.getElementById('fSalon').addEventListener('input',e=>{setOv(cur,{salon:e.target.value});refreshPreview();buildMiniLater();});
@@ -377,7 +405,7 @@ let miniT;function buildMiniLater(){clearTimeout(miniT);miniT=setTimeout(()=>bui
 document.getElementById('dClose').addEventListener('click',closeDrawer);
 document.getElementById('scrim').addEventListener('click',closeDrawer);
 document.getElementById('dDone').addEventListener('click',closeDrawer);
-document.getElementById('dResetItem').addEventListener('click',()=>{delete overrides[cur];delete sourceSel[cur];delete sourceLabel[cur];delete candidates[cur];localStorage.setItem(LS,JSON.stringify(overrides));openDrawer(cur);});
+document.getElementById('dResetItem').addEventListener('click',()=>{delete overrides[cur];delete sourceSel[cur];delete sourceLabel[cur];delete candidates[cur];delete frameSeq[cur];localStorage.setItem(LS,JSON.stringify(overrides));openDrawer(cur);});
 
 /* ---------- filters / bulk / export ---------- */
 ['q','fDesign','fStatus'].forEach(id=>document.getElementById(id).addEventListener('input',renderGrid));
