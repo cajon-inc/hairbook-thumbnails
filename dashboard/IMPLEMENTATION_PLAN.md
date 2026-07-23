@@ -1,118 +1,161 @@
 # クリエイティブ管理画面 実装計画
 
-- 目的: カタログサムネを一覧化し、**画像ごとにデザイン・文言・有効/無効を個別選択**できる管理画面。
+- 目的: カタログサムネを一覧化し、**サロン別のゼロベース生成画像1〜2案から切替**でき、切替後の配信結果まで振り返れる管理画面。
 - 参照: 既存ダッシュボード `hairbook-dashboard.vercel.app/creative`（Next.js/Vercel想定）の `/creative` に載せる。
-- プロトタイプ: `dashboard/creative.html`（このリポジトリ・クリック可能・Canvasでライブ合成）。本計画の「動く仕様書」。
+- 現行プロトタイプ: `dashboard/creative.html`（クリック可能・Canvas合成）は「現在画像＋ゼロベース生成案1〜2」と「画像設定／配信結果」の2タブへ更新済み。生成画像と指標はAPI未接続のため、画面検証用デモとして明示している。
+- サロン情報と公式リンク先から画像をゼロベースで個別生成する方針は、
+  [`ZERO_BASE_IMAGE_GENERATION_PLAN.md`](ZERO_BASE_IMAGE_GENERATION_PLAN.md) を正とする。
 
 ---
 
 ## 1. 全体像（データの流れ）
 
-```
-[管理画面 /creative]  一覧＋個別編集（デザイン/サロン名/エリア/特典/有効）
-        │  保存＝「公開」
-        ▼
-[creative_config]  id → {design, salon, area, badge, enabled}      ← 唯一の個別設定
-        │  （保存先: リポジトリの creative_config.json ／ or Sheetタブ）
-        ▼
-[enrich.py]  有効な元画像→低情報なら改善→選択デザインで帯合成→enriched/<hash>.jpg
-        │  （既に creative_config を読む実装済み）
-        ▼
-[thumbnail_override]  id → enriched raw URL（本番フィードH1が最優先参照）
-        ▼
-[Meta]  改善版サムネで配信
+```text
+[管理画面 /creative]
+  ├─ 画像設定: 現在画像＋生成案1〜2の比較／承認／切替
+  └─ 配信結果: 切替履歴／画像バージョン別KPI
+        │
+        ├─ private creative config / asset metadata
+        ├─ creative_publish_events（不変の切替履歴）
+        └─ 承認済み生成画像だけpublic保存
+                         │
+                         ▼
+[enrich.py] 同一帯デザインで合成 → [thumbnail_override] → [Meta]
+                                                             │
+                                                             ▼
+                    [Meta product_id日次実績] → [creative_product_daily]
+                                                             │
+                    [creative_publish_events] ──時系列結合───┘
+                                                             │
+                                                             ▼
+                                            [/creative 配信結果]
 ```
 
-**要点**: 管理画面は `creative_config` を書くだけ。実際の画像生成・配信反映は既存パイプライン（`enrich.py`＋override＋H1数式）が担う。UIとパイプラインは `creative_config` で疎結合。
+**要点**: 画像切替の正本はprivate設定、配信画像の正本はpublic JPG、結果紐付けの正本は `creative_publish_events`。Metaから画像URLは返らないため、切替履歴と `product_id × 日付` を結合して画像バージョン別実績を作る。
 
 ---
 
 ## 2. データモデル
 
 ### 一覧アイテム（GET用・読み取り）
+
 既存データを結合して返す:
 | 項目 | 出所 |
 |---|---|
 | id / image_link | フィード `入稿用データフィード_ローカル商品` |
-| salon（既定） | `title`（=access_salon_name+staff）／将来は専用列 |
+| salon（既定） | フィード生成元の `salon_name`。`title` の逆解析はしない |
 | area（既定） | `address.city`（例「大阪市中央区」） |
 | verdict（情報判定） | `enrich` の `results.json`（ok/low_info/broken） |
-| 現在の設定 | `creative_config`（未設定なら既定=下部スクリム/有効） |
+| 現在画像 | フィードと `thumbnail_override` の有効URL |
+| 生成案1〜2 | private asset metadataの最新承認可能版 |
+| 現在の設定 | private `creative_config` |
+| 配信結果 | `creative_product_daily` を画像バージョン別に集計 |
 
 ### creative_config（POST用・唯一の個別設定）
+
 ```json
 {
   "44528_01KJ...": { "design": "bottom_scrim", "salon": "hair salon Lumière",
-    "area": "東京都渋谷区・表参道", "badge": "新規20%OFF", "enabled": true,
-    "source_url": "https://raw.githubusercontent.com/.../sources/<hash>.jpg" },
+    "area": "東京都渋谷区・表参道", "badge": "", "enabled": true,
+    "source": "generated",
+    "source_url": "https://raw.githubusercontent.com/.../<anonymous-hash>.jpg",
+    "source_params": {"asset_id": "<anonymous id>", "candidate_slot": "pattern_1",
+      "asset_version": 1, "representation": "concept_image"} },
   "44530_01KQ...": { "enabled": false }
 }
 ```
-- `design`: 10種。標準= bottom_scrim(推奨) / lower_third / top_band / frosted_bar / corner_tag / editorial、
-  **目立つ系**= bold_bar / billboard / burst / ribbon。
-- `source_url`（任意）: 管理画面で選んだ元画像（入稿/動画別フレーム/AI生成）のホスト先。省略時は既定のフィード画像。
+- `design`: 新10種。`bottom_scrim`（標準）/ `caption` / `magazine` / `letterbox` / `namecard` / `tategaki` / `frameline` / `polaroid` / `poster` / `plate`。
+- `source_url`: 管理画面で選んだ**承認済みゼロベース生成画像**のホスト先。生成案1または2だけを指定する。
+- 現在画像へ戻す場合は、公開前に保存した直前overrideを復元する。`source_url` を単純削除してautofix済み画像を失わない。
 - 省略キーは既定にフォールバック（`enabled` 既定 true、`design` 既定 bottom_scrim）。
 
 ### 画像ソースのホスティング
-管理画面のアップロード/生成画像は保存が必要。`sources/<hash>.jpg` として本リポジトリにコミット（配信と同じraw方式）
-し、`source_url` に格納。動画別フレームはサーバ側 ffmpeg 抽出（autofix v3 と同系）、AI生成は生成APIの結果を同様に保存。
+
+- 切替候補は「生成案1」「生成案2」の最大2案。入稿、動画キャプチャ、疑似フレーム、既存画像のAI加工は扱わない。
+- 承認済み最終JPGだけを匿名ハッシュ名でpublic画像リポジトリへ保存し、`source_url` に格納する。
+- ブリーフ、プロンプト、候補履歴、承認者、切替履歴、配信実績はprivate側へ保存する。
+- 再生成時は既存候補を上書きせず、同じ `candidate_slot` の `asset_version` を増やす。
+
+### 画像切替履歴
+
+`creative_publish_events` に、対象サロン、対象商品IDスナップショット、旧／新asset、候補番号、asset/design/copy version、公開時刻、フィード反映確認時刻、集計開始日、公開者、ロールバック理由を追記する。既存イベントは上書きしない。
+
+### 配信実績
+
+Metaの `product_id` 日次ブレイクダウンから spend / impressions / clicks / actions を取得し、`creative_publish_events` へ時系列結合して `creative_product_daily` を作る。切替日は旧新が混在し得るため除外し、最初の完全な配信日から集計する。
 
 ---
 
 ## 3. アーキテクチャ
 
 ### フロント（Next.js `/creative`）
+
 プロトタイプ `creative.html` をReactに移植。構成:
-- **一覧グリッド**: カード（プレビュー・サロン名・エリア・デザイン/状態チップ・選択チェック）
-- **詳細ドロワー**: ライブプレビュー＋デザイン6案（各ミニプレビュー）＋文言編集＋有効トグル
-- **絞り込み/検索**: デザイン別・状態別（有効/無効/要改善）・サロン名/エリア検索
+- **一覧グリッド**: カード（現在画像・生成案番号・配信開始日・CTR・切替前比・impressions・状態チップ）
+- **画像設定タブ**: 現在画像（比較／復元用）＋生成案1＋任意の生成案2。帯プレビュー、根拠、QA、承認、切替
+- **配信結果タブ**: 切替タイムライン、画像バージョン別KPI、前後比較、案1/2比較、holdout比較、除外日と母数
+- **絞り込み/検索**: 画像種別・結果状態・有効/無効・要改善・サロン名/エリア検索
 - **一括操作**: 選択に対しデザイン一括適用・有効/無効
-- **公開**: 変更を `creative_config` にPOST → パイプライン起動
+- **公開**: 承認済み生成案をPOST → publish event作成 → パイプライン起動
+
+画像ソース欄から、旧プロトタイプの「入稿」「動画から別フレーム」「AI生成（フィルタ加工）」は削除済み。
 
 ### プレビュー（2層）
+
 - **即時**: ブラウザ内Canvasで合成（プロトタイプの `overlays.py`→JS移植をそのまま流用）。編集の即応性。
 - **正**: 公開時にサーバ側 `overlays.py`(Pillow) が生成した `enriched/<hash>.jpg` が最終成果物（Canvasは近似プレビュー）。
 
-### 保存先（`creative_config`）— 2案
-| 案 | 内容 | 長所 |
-|---|---|---|
-| **A. repoにコミット**（推奨） | `POST /api/creative` が GitHub API で `creative_config.json` を更新 | バージョン管理・監査・パイプラインが直読み。追加インフラ不要 |
-| B. Sheetタブ | `creative_config` タブに書く | 既存gspread資産と一貫。非エンジニアも見れる |
+### 保存先
+
+- private: `creative_config`、ブリーフ、プロンプト、全候補、QA、承認、`creative_publish_events`、`creative_product_daily`。
+- public: 承認済み最終JPGと匿名アセットIDだけ。
+- repoコミット案を採用する場合も、public `hairbook-thumbnails` へprivateメタデータを置かない。
 
 ### API（Next.js Route Handlers / Vercel Functions）
+
 - `GET /api/creative` … 一覧アイテム（§2）を返す（フィード＋results.json＋config結合）
-- `POST /api/creative` … 差分configを保存（A案=GitHubコミット）＋任意でワークフロー起動
-- `POST /api/creative/publish` … `thumbnail-enrich.yml` を `workflow_dispatch` で起動（即時反映）
+- `POST /api/creative/:salon_id/generate` … 生成案1または2を1候補ずつ生成
+- `POST /api/creative/:salon_id/approve` … QA済み候補を承認
+- `POST /api/creative/:salon_id/publish` … 差分config保存＋publish event作成＋ワークフロー起動
+- `POST /api/creative/:salon_id/rollback` … 直前画像を復元し、rollback eventを作成
+- `GET /api/creative/:salon_id/performance` … 画像バージョン別配信実績と比較を返す
 
 ---
 
-## 4. パイプライン側（実装済み）
+## 4. パイプライン側（現状と必要変更）
 
 `thumbgen/enrich.py` は既に `creative_config.json` を読み、id別に
 `design / salon / area / badge / enabled` を反映してエンリッチする（`enabled:false` は帯を付けない）。
-→ **管理画面はconfigを書くだけで本番反映できる状態**。定期実行は `.github/workflows/thumbnail-enrich.yml`。
+
+ただし、生成画像の承認検証、画像バージョン、publish event、直前overrideへのロールバック、Meta実績取得は未実装。新10デザインも `overlays.py` 未移植のため、現状のまま本番接続はしない。
 
 ---
 
 ## 5. フェーズ
 
-1. **API（読み取り）**: `GET /api/creative` … フィード＋results.json＋configの結合。まず一覧が出る。
-2. **UI移植**: `creative.html` → React `/creative`（グリッド＋ドロワー＋Canvasプレビュー）。
-3. **保存**: `POST /api/creative`（A案=GitHubコミット）＋楽観更新。
-4. **公開連携**: 保存後に enrich ワークフローを起動 → 反映状況を results.json でUIに表示。
-5. **運用**: 変更履歴/承認、段階ロールアウト（`--rollout`）、override除去での即ロールバック。
+1. **実データ読み取り**: フィード＋privateブリーフ＋configを結合。
+2. **生成案1〜2**: ゼロベース生成、QA、承認。候補上限を2へ固定。
+3. **UI更新（プロトタイプ完了）**: 入稿・動画フレーム・フィルタ加工を削除し、「画像設定」「配信結果」の2タブを実装。本番API接続はPhase 4以降。
+4. **保存と公開**: private config保存、public JPG保存、publish event作成、enrich起動。
+5. **実績取得**: Meta `product_id` 日次実績＋ATCを取得し、画像バージョンへ時系列結合。
+6. **振り返り**: 前後比較、案1/2比較、holdout比較、母数・除外日表示。
+7. **運用**: 承認、段階ロールアウト、直前overrideへの即ロールバック。
 
 ---
 
 ## 6. 未確定・要決定
-- 保存先 A（repoコミット）/ B（Sheet）どちらにするか。
-- サロン名の「専用列」を用意するか（`title` はstaff名連結のため）。表記ゆれ対策。
+
+- private config／publish events／日次実績の保存先。
+- Metaアカウントの集計タイムゾーンと「完全日」の確定方法。
+- 最小impressions・最低観測日数など、結果を参考値から判定可能へ切り替える基準。
+- サロン名の専用値をフィード生成前データからどう渡すか（`title` は使わない）。
 - プレビューをCanvas近似のみにするか、公開前にサーバ生成の実画像も見せるか。
 - 既存 `hairbook-dashboard` リポへのアクセス（このセッションに追加できれば直接移植可能）。
 
 ---
 
 ## 7. このリポジトリの関連物
-- `dashboard/creative.html`（プロトタイプ・動く仕様書）／ `creative.template.html`＋`build_dashboard.py`（生成）
-- `thumbgen/enrich.py`（creative_config対応済みパイプライン）／ `overlays.py`（デザイン6案）／ `improve.py`（低情報改善）
+
+- `dashboard/creative.html`（生成案1〜2・切替履歴・サンプル配信結果を含む現行プロトタイプ）／ `creative.template.html`＋`build_dashboard.py`（生成）
+- `thumbgen/enrich.py`（creative_config対応済みパイプライン）／ `overlays.py`（旧10デザイン）／ `improve.py`（低情報改善）
 - `thumbgen/build_results_index.py`（結果一覧）／ `.github/workflows/thumbnail-enrich.yml`（定期実行）
