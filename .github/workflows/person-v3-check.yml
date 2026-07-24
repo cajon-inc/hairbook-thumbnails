@@ -1,0 +1,101 @@
+name: 人物V3 生成・事前チェック
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "thumbgen/person_v3.py"
+      - "thumbgen/build_person_v3_catalog.py"
+      - "thumbgen/fetch_person_v3_sources.py"
+      - "thumbgen/requirements.txt"
+      - "thumbgen/creative_inventory.py"
+      - "thumbgen/creative_rollout.py"
+      - "thumbgen/creative_batch.py"
+      - "thumbgen/enrich.py"
+      - "thumbgen/tests/**"
+      - "dashboard/source_images/person_v3_*.sample.json"
+      - ".github/workflows/person-v3-check.yml"
+      - ".github/workflows/person-v3-publish.yml"
+  push:
+    branches:
+      - "claude/catalog-thumbnail-improvement-xw8vo2"
+    paths:
+      - "thumbgen/person_v3.py"
+      - "thumbgen/build_person_v3_catalog.py"
+      - "thumbgen/fetch_person_v3_sources.py"
+      - "thumbgen/requirements.txt"
+      - "thumbgen/creative_inventory.py"
+      - "thumbgen/creative_rollout.py"
+      - "thumbgen/creative_batch.py"
+      - "thumbgen/enrich.py"
+      - "thumbgen/tests/**"
+      - "dashboard/source_images/person_v3_*.sample.json"
+      - ".github/workflows/person-v3-check.yml"
+      - ".github/workflows/person-v3-publish.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: 日本語フォントとPython依存
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          pip install --quiet -r thumbgen/requirements.txt
+
+      - name: Fetch and verify source images
+        run: |
+          python3 thumbgen/fetch_person_v3_sources.py \
+            --manifest dashboard/source_images/person_v3_manifest.sample.json
+
+      - name: Unit tests
+        run: python3 -m unittest discover -s thumbgen/tests -v
+
+      - name: Sample V3 render
+        run: |
+          python3 thumbgen/person_v3.py \
+            --manifest dashboard/source_images/person_v3_manifest.sample.json \
+            --output-dir dashboard/rollout_output/person-v3-sample
+
+      - name: Automated QA
+        run: |
+          python3 thumbgen/creative_rollout.py qa \
+            --manifest dashboard/source_images/person_v3_manifest.sample.json \
+            --render-index dashboard/rollout_output/person-v3-sample/render_index.json \
+            --output dashboard/rollout_output/person-v3-sample/qa_report.json
+
+      - name: Review page
+        run: |
+          python3 thumbgen/creative_rollout.py init-review \
+            --manifest dashboard/source_images/person_v3_manifest.sample.json \
+            --render-index dashboard/rollout_output/person-v3-sample/render_index.json \
+            --qa-report dashboard/rollout_output/person-v3-sample/qa_report.json \
+            --output dashboard/rollout_output/person-v3-sample/review.json \
+            --html dashboard/rollout_output/person-v3-sample/review.html
+
+      - name: Preflight and rollback dry-run
+        run: |
+          python3 thumbgen/creative_rollout.py preflight \
+            --manifest dashboard/source_images/person_v3_manifest.sample.json \
+            --render-index dashboard/rollout_output/person-v3-sample/render_index.json \
+            --qa-report dashboard/rollout_output/person-v3-sample/qa_report.json \
+            --approvals dashboard/source_images/person_v3_approvals.sample.json \
+            --override-snapshot dashboard/source_images/thumbnail_override_snapshot.sample.json \
+            --output-dir dashboard/rollout_output/person-v3-sample/preflight \
+            --dry-run
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: person-v3-dry-run
+          path: dashboard/rollout_output/person-v3-sample
+          retention-days: 14

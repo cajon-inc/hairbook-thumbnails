@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>クリエイティブ全件進行 — HB_02</title>
+<style>
+:root{
+  --bg:#f2efe9;--panel:#fff;--panel2:#f8f6f2;--line:#dfd9cf;--line2:#cfc6b8;
+  --ink:#211c16;--soft:#665d50;--faint:#958b7b;--gold:#9a742f;--gold2:#bd9851;
+  --green:#4e775a;--amber:#a87320;--red:#b84635;--blue:#4d6f8b;--violet:#736086;
+  --shadow:0 10px 30px rgba(38,29,18,.08);
+  --sans:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Noto Sans JP",Meiryo,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.topin{max-width:1500px;margin:auto;padding:13px 20px;display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:11px;min-width:260px}.mark{width:34px;height:34px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font:800 12px var(--mono)}
+.brand b{font-size:15px}.brand small{display:block;color:var(--gold);font:10px var(--mono);letter-spacing:.12em}
+.grow{flex:1}.stamp{text-align:right;color:var(--faint);font:10px var(--mono);line-height:1.45}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700}
+.btn:hover:not(:disabled){border-color:var(--gold)}.btn.pri{background:var(--gold);color:white;border-color:var(--gold)}.btn.danger{background:var(--red);color:white;border-color:var(--red)}
+.btn:disabled{cursor:not-allowed;opacity:.42}.tabs{max-width:1500px;margin:auto;padding:0 20px;display:flex;gap:4px}
+.tab{border:0;background:none;color:var(--soft);padding:10px 15px;border-bottom:2px solid transparent;font-size:12px;font-weight:800}
+.tab.on{color:var(--gold);border-color:var(--gold)}
+.wrap{max-width:1500px;margin:auto;padding:20px}.view{display:none}.view.on{display:block}
+.notice{background:#fff8e9;border:1px solid #e7ce98;color:#70551d;border-radius:10px;padding:11px 14px;font-size:12px;margin-bottom:16px}
+.notice b{color:#4c3811}.notice.error{background:#fff0ed;border-color:#edb6ad;color:#7e2b20}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(135px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 15px;box-shadow:0 1px 1px rgba(0,0,0,.02)}
+.kpi .label{font-size:10px;color:var(--soft);font-weight:700}.kpi .value{font:800 24px var(--mono);margin-top:3px}.kpi .sub{font-size:9px;color:var(--faint);margin-top:2px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.025);margin-bottom:14px}
+.panelhead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.panelhead h2{font-size:14px;margin:0}.panelhead p{font-size:10px;color:var(--faint);margin:0}.panelbody{padding:16px}
+.progress{display:flex;height:16px;border-radius:99px;overflow:hidden;background:var(--panel2);border:1px solid var(--line)}
+.seg{min-width:0;transition:width .2s}.seg.source_pending{background:#c8c0b4}.seg.review_pending{background:var(--amber)}.seg.approved{background:var(--blue)}
+.seg.publish_ready{background:var(--violet)}.seg.published{background:var(--green)}.seg.hold,.seg.qa_failed,.seg.review_rejected{background:var(--red)}
+.legend{display:flex;gap:13px;flex-wrap:wrap;margin-top:10px}.leg{font-size:10px;color:var(--soft);display:flex;align-items:center;gap:5px}
+.dot{width:8px;height:8px;border-radius:2px;background:#bbb}.dot.source_pending{background:#c8c0b4}.dot.review_pending{background:var(--amber)}.dot.approved{background:var(--blue)}
+.dot.publish_ready{background:var(--violet)}.dot.published{background:var(--green)}.dot.hold{background:var(--red)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.filters input,.filters select{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 10px;color:var(--ink);font-size:12px}
+.filters input{min-width:260px;flex:1}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;min-width:1100px;font-size:11px}th{position:sticky;top:0;background:var(--panel2);text-align:left;color:var(--soft);font-size:9px;letter-spacing:.05em;padding:9px;border-bottom:1px solid var(--line);z-index:1}
+td{padding:8px 9px;border-bottom:1px solid #eee9e1;vertical-align:middle}tbody tr:hover{background:#fbf9f5}.thumb{width:44px;height:55px;object-fit:cover;border-radius:6px;background:#ddd;border:1px solid var(--line)}
+.name{font-weight:800;max-width:270px}.ref{font-size:9px;color:var(--faint);max-width:270px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:var(--mono);font-size:9px}.badge{display:inline-flex;align-items:center;border:1px solid var(--line2);border-radius:99px;padding:3px 7px;font-size:9px;font-weight:800;white-space:nowrap}
+.badge.source_pending{color:var(--soft)}.badge.review_pending{color:var(--amber);border-color:var(--amber)}.badge.approved{color:var(--blue);border-color:var(--blue)}
+.badge.publish_ready{color:var(--violet);border-color:var(--violet)}.badge.published{color:var(--green);border-color:var(--green)}
+.badge.hold,.badge.qa_failed,.badge.review_rejected{color:var(--red);border-color:var(--red)}
+.pager{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-top:11px;color:var(--soft);font:10px var(--mono)}
+.assetgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:14px}
+.asset{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.assethead{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;gap:9px;align-items:center}.assethead .ttl{font-weight:800;font-size:13px}.assethead .sub{font:9px var(--mono);color:var(--faint)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}.pic{background:var(--panel2);padding:10px}.pic label{display:block;font-size:9px;color:var(--soft);font-weight:800;margin-bottom:5px}
+.pic img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;background:#ddd;display:block}.assetbody{padding:14px}.links{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.links a{font-size:10px;color:var(--gold);font-weight:700}.qa{display:flex;gap:6px;align-items:center;font-size:10px;color:var(--soft);margin-bottom:10px}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px}.check{display:flex;align-items:flex-start;gap:7px;padding:7px 8px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;font-size:10px}
+.check input{margin-top:2px}.reviewfields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.reviewfields input,.reviewfields textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px;background:var(--panel2);color:var(--ink)}
+.reviewfields textarea{grid-column:1/-1;min-height:58px;resize:vertical}.reviewactions{display:flex;gap:7px;margin-top:9px}.reviewmeta{font-size:9px;color:var(--faint);margin-top:8px}
+.gategrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);gap:14px}.gate{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.gate:last-child{border:0}.gicon{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#eee;color:var(--soft);font-weight:900}.gate.pass .gicon{background:#e7f1e9;color:var(--green)}.gate.fail .gicon{background:#f8e8e5;color:var(--red)}
+.gate b{font-size:11px}.gate p{margin:2px 0 0;font-size:10px;color:var(--soft)}
+.actionbox{background:var(--ink);color:#f7f2e9;border-radius:12px;padding:16px}.actionbox h3{font-size:13px;margin:0 0 8px}.actionbox p{font-size:10px;color:#c9c0b3}.actionbox .btn{width:100%;margin-top:8px}
+.code{font:9px/1.6 var(--mono);background:rgba(255,255,255,.08);border-radius:7px;padding:9px;word-break:break-all;color:#e6dccd}
+.empty{padding:32px;text-align:center;color:var(--faint);font-size:12px}.loading{min-height:180px;display:grid;place-items:center;color:var(--soft);font:12px var(--mono)}.loading[hidden]{display:none!important}
+.perfgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.method{padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}.method b{font-size:11px}.method p{font-size:10px;color:var(--soft);margin:4px 0 0}
+.foot{padding:10px 0 30px;color:var(--faint);font-size:9px;font-family:var(--mono)}
+@media(max-width:1050px){.kpis{grid-template-columns:repeat(3,1fr)}.gategrid{grid-template-columns:1fr}}
+@media(max-width:680px){.topin{padding:10px 12px}.brand{min-width:0}.brand b{font-size:12px}.stamp{display:none}.tabs,.wrap{padding-left:12px;padding-right:12px}.kpis{grid-template-columns:repeat(2,1fr)}.assetgrid{grid-template-columns:1fr}.checks{grid-template-columns:1fr}.reviewfields{grid-template-columns:1fr}.reviewfields textarea{grid-column:auto}.perfgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="topin">
+    <div class="brand"><div class="mark">HB</div><div><small>CATALOG CREATIVE · HB_02</small><b>人物優先V3 全件進行</b></div></div>
+    <div class="grow"></div>
+    <div class="stamp" id="stamp">読込前<br>—</div>
+    <button class="btn" id="downloadBtn" disabled>状態を書き出す</button>
+    <button class="btn pri" id="refreshBtn">最新状態に更新</button>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-view="inventory">全件進行</button>
+    <button class="tab" data-view="review">事前チェック</button>
+    <button class="tab" data-view="performance">配信結果</button>
+    <button class="tab" data-view="release">実行・復元</button>
+  </div>
+</div>
+
+<main class="wrap">
+  <div id="notice" class="notice"><b>本番画像は未変更です。</b> 全unique assetの自動QAと人手承認、公開前preflightが完了するまで、一括差し替えは実行できません。</div>
+  <div id="loading" class="loading">HB_02の現行フィードと進行データを読み込んでいます…</div>
+
+  <section class="view on" id="view-inventory" hidden>
+    <div class="kpis" id="kpis"></div>
+    <div class="panel">
+      <div class="panelhead"><h2>全件の進行状況</h2><p>分母はページ読込時点の in stock product ID。件数は在庫同期により変動します。</p></div>
+      <div class="panelbody"><div class="progress" id="progress"></div><div class="legend" id="legend"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panelhead"><h2>product ID一覧</h2><p>フィードのtitleは一覧参照用で、バナーの正式店名には使用しません。</p></div>
+      <div class="panelbody">
+        <div class="filters">
+          <input id="search" placeholder="サロンID・product ID・参照タイトルで検索">
+          <select id="stageFilter"><option value="">進行: すべて</option></select>
+          <select id="subjectFilter"><option value="">単位: すべて</option><option value="salon">サロン</option><option value="stylist">スタイリスト</option></select>
+          <select id="overrideFilter"><option value="">override: すべて</option><option value="yes">あり</option><option value="no">なし</option></select>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>現在画像</th><th>サロン / 参照名</th><th>product ID</th><th>単位</th><th>進行</th><th>QA</th><th>人手確認</th><th>バッチ</th><th>override</th></tr></thead>
+          <tbody id="productRows"></tbody>
+        </table></div>
+        <div class="pager"><span id="pageInfo"></span><button class="btn" id="prevPage">前へ</button><button class="btn" id="nextPage">次へ</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-review" hidden>
+    <div class="panel">
+      <div class="panelhead"><h2>差し替え前の人手チェック</h2><p>元人物画像・1080×1350完成バナー・360×450縮小表示を比較し、unique assetごとに承認します。</p></div>
+      <div class="panelbody">
+        <div class="filters">
+          <input id="assetSearch" placeholder="店舗名・サロンID・product ID・asset IDで検索">
+          <select id="assetReviewFilter">
+            <option value="">確認状態: すべて</option>
+            <option value="review_pending">未確認</option>
+            <option value="approved">承認済み</option>
+            <option value="changes_requested">修正依頼</option>
+            <option value="rejected">却下</option>
+            <option value="qa_failed">QA不合格</option>
+          </select>
+          <select id="assetPageSize">
+            <option value="12">12件表示</option>
+            <option value="20" selected>20件表示</option>
+            <option value="40">40件表示</option>
+          </select>
+        </div>
+        <div class="qa" id="assetSummary"></div>
+        <div class="assetgrid" id="assetGrid"></div>
+        <div class="pager"><span id="assetPageInfo"></span><button class="btn" id="assetPrevPage">前へ</button><button class="btn" id="assetNextPage">次へ</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-performance" hidden>
+    <div class="kpis" id="perfKpis"></div>
+    <div class="panel">
+      <div class="panelhead"><h2>旧画像 / 人物優先V3の配信結果</h2><p>公開ログを基準に、切替日を除いたMeta完全日だけを画像versionへ結合します。</p></div>
+      <div class="panelbody">
+        <div class="perfgrid">
+          <div class="method"><b>対象と主指標</b><p>HB_02。CTR / CPMを主指標、商品別Meta ATC（onsite_web_add_to_cart）を従指標とします。</p></div>
+          <div class="method"><b>集計単位</b><p>salon_id × creative_version × 完全日。product IDは画像versionとの結合キーとして保持します。</p></div>
+          <div class="method"><b>除外</b><p>切替日、同一サロン内の旧新混在日、不完全日を除外します。Bot CPA/CVはトレンド参考のみです。</p></div>
+        </div>
+        <div id="performanceRows"><div class="empty">公開イベントとMeta日次実績が入ると、切替前28完全日と切替後7日・14日をここで比較します。</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-release" hidden>
+    <div class="gategrid">
+      <div class="panel">
+        <div class="panelhead"><h2>全件差し替え preflight</h2><p>1項目でも未完了なら実行ボタンは有効になりません。</p></div>
+        <div class="panelbody" id="gates"></div>
+      </div>
+      <div class="actionbox">
+        <h3>本番アクション</h3>
+        <p>差し替えは承認済みmanifestに含まれるIDだけを更新し、実行直前snapshotと復元eventを保存します。</p>
+        <div class="code" id="snapshotCode">snapshot: —</div>
+        <button class="btn pri" id="executeBtn" disabled>全件差し替えを実行</button>
+        <button class="btn danger" id="rollbackBtn" disabled>直前バッチを元に戻す</button>
+        <p id="actionHelp">制作・承認完了後にGitHub Actionsの本番承認へ進みます。</p>
+      </div>
+    </div>
+  </section>
+  <div class="foot">SOURCE OF TRUTH: live catalog feed + thumbnail_override + approved asset/review records. Dashboard actions never write the feed H column directly.</div>
+</main>
+
+<script src="/api-client.js"></script>
+<script>
+if(!apiClient.isAuthenticated()){
+  location.replace('/sales_login.html?redirect='+encodeURIComponent(location.pathname+location.search));
+}
+const API='/api/creative-status', REVIEW_API='/api/creative-review';
+const PUBLISH_WORKFLOW='https://github.com/cajon-inc/hairbook-thumbnails/actions/workflows/person-v3-publish.yml';
+const LABELS={
+  source_pending:'素材未選定',source_selected:'素材選定済み',rendered:'制作済み',qa_failed:'QA不合格',
+  review_pending:'人手確認待ち',review_rejected:'要修正',approved:'承認済み',publish_ready:'公開準備完了',
+  published:'公開済み',rolled_back:'復元済み',hold:'保留',excluded_out_of_stock:'在庫外'
+};
+const CHECKS=[
+  ['source_match','対象サロン／スタッフの人物である'],
+  ['person_unchanged','人物・顔・髪型・髪色が不自然に変わっていない'],
+  ['safe_crop','顔・髪・主要スタイルが文字や見切れで損なわれない'],
+  ['copy_matches_landing','店舗名・エリア・アクセス・訴求が着地先と一致'],
+  ['no_misleading_claim','人物を施術実績だと過度に断定していない'],
+  ['mobile_readable','360×450相当で情報を判読できる'],
+  ['no_unwanted_text','求人・価格・他店情報・第三者ロゴが残っていない'],
+  ['rollback_identified','現在画像と直前overrideの復元先が明確']
+];
+const STAGES=['source_pending','source_selected','rendered','qa_failed','review_pending','review_rejected','approved','publish_ready','published','rolled_back','hold'];
+let DATA=null,FILTERED=[],PAGE=0,ASSET_FILTERED=[],ASSET_PAGE=0;const PAGE_SIZE=50;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n||0).toLocaleString('ja-JP');
+const authHeaders=()=>{const t=apiClient.getToken();return t?{Authorization:'Bearer '+t}:{}};
+function badge(stage){return `<span class="badge ${esc(stage)}">${esc(LABELS[stage]||stage)}</span>`}
+function onAuthFail(r){if(r.status===401){apiClient.clearToken();location.replace('/sales_login.html?redirect='+encodeURIComponent(location.pathname+location.search));throw new Error('Unauthorized')}}
+async function load(){
+  $('refreshBtn').disabled=true;$('loading').hidden=false;
+  try{
+    const r=await fetch(API,{headers:authHeaders(),cache:'no-store'});onAuthFail(r);
+    const j=await r.json();if(!r.ok)throw new Error(j.detail||j.error||('HTTP '+r.status));
+    DATA=j;PAGE=0;render();
+  }catch(e){
+    $('notice').className='notice error';$('notice').innerHTML='<b>読込に失敗しました。</b> '+esc(e.message);
+  }finally{$('loading').hidden=true;$('refreshBtn').disabled=false}
+}
+function render(){
+  document.querySelectorAll('.view').forEach(v=>v.hidden=false);
+  const s=DATA.summary,d=new Date(DATA.snapshot_at);
+  $('stamp').innerHTML='SHEET SNAPSHOT<br>'+esc(d.toLocaleString('ja-JP'));
+  $('downloadBtn').disabled=false;
+  $('kpis').innerHTML=[
+    ['対象product',fmt(s.active_products),'in stock'],['対象サロン',fmt(s.active_salons),'salon ID'],
+    ['asset割当',fmt(s.assigned_products),`全体の${s.active_products?((s.assigned_products/s.active_products)*100).toFixed(1):0}%`],
+    ['QA通過asset',fmt(s.qa_passed_assets),`unique ${fmt(s.unique_assets)}`],
+    ['承認済みasset',fmt(s.approved_assets),'人手確認'],['公開済み',fmt(s.published_products),`保留 ${fmt(s.held_products)}`]
+  ].map(x=>`<div class="kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div><div class="sub">${x[2]}</div></div>`).join('');
+  const counts=s.stage_counts,total=s.active_products||1;
+  $('progress').innerHTML=STAGES.filter(k=>counts[k]).map(k=>`<div class="seg ${k}" style="width:${counts[k]/total*100}%" title="${esc(LABELS[k])}: ${fmt(counts[k])}"></div>`).join('');
+  $('legend').innerHTML=STAGES.filter(k=>counts[k]).map(k=>`<span class="leg"><i class="dot ${k==='review_rejected'||k==='qa_failed'?'hold':k}"></i>${esc(LABELS[k])} ${fmt(counts[k])}</span>`).join('');
+  const sf=$('stageFilter'),cur=sf.value;sf.innerHTML='<option value="">進行: すべて</option>'+STAGES.map(k=>`<option value="${k}">${esc(LABELS[k])} (${fmt(counts[k]||0)})</option>`).join('');sf.value=cur;
+  applyFilters();filterAssets();renderRelease();renderPerformance();
+}
+function applyFilters(){
+  if(!DATA)return;const q=$('search').value.trim().toLowerCase(),st=$('stageFilter').value,su=$('subjectFilter').value,ov=$('overrideFilter').value;
+  FILTERED=DATA.products.filter(p=>p.availability==='in stock')
+    .filter(p=>!q||[p.product_id,p.salon_id,p.feed_title_reference,p.canonical_salon_name,p.area].some(v=>String(v||'').toLowerCase().includes(q)))
+    .filter(p=>!st||p.stage===st).filter(p=>!su||p.subject===su)
+    .filter(p=>!ov||(ov==='yes'?!!p.current_override_url:!p.current_override_url));
+  const max=Math.max(0,Math.ceil(FILTERED.length/PAGE_SIZE)-1);PAGE=Math.min(PAGE,max);renderTable();
+}
+function renderTable(){
+  const start=PAGE*PAGE_SIZE,rows=FILTERED.slice(start,start+PAGE_SIZE);
+  $('productRows').innerHTML=rows.map(p=>{
+    const display=p.canonical_salon_name||`サロンID ${p.salon_id||'未解決'}`;
+    return `<tr>
+      <td><img class="thumb" loading="lazy" src="${esc(p.current_override_url||p.current_image_url)}" alt=""></td>
+      <td><div class="name">${esc(display)}</div><div class="ref" title="${esc(p.feed_title_reference)}">参照: ${esc(p.feed_title_reference||'—')}</div></td>
+      <td class="mono">${esc(p.product_id)}</td><td>${esc(p.subject==='stylist'?'スタイリスト':'サロン')}${p.stylist_id?`<div class="mono">${esc(p.stylist_id)}</div>`:''}</td>
+      <td>${badge(p.stage)}${p.hold_reason?`<div class="ref">${esc(p.hold_reason)}</div>`:''}</td>
+      <td>${p.qa_status==='pass'?'<span style="color:var(--green);font-weight:800">PASS</span>':esc(p.qa_status)}</td>
+      <td>${p.review?esc(p.review.decision):'—'}</td><td>${esc(p.rollout_batch||'—')}</td>
+      <td>${p.current_override_url?'<span style="color:var(--green);font-weight:800">あり</span>':'なし'}</td>
+    </tr>`}).join('')||'<tr><td colspan="9"><div class="empty">該当するproduct IDはありません。</div></td></tr>';
+  $('pageInfo').textContent=`${fmt(start+1)}–${fmt(Math.min(start+PAGE_SIZE,FILTERED.length))} / ${fmt(FILTERED.length)}`;
+  $('prevPage').disabled=PAGE===0;$('nextPage').disabled=start+PAGE_SIZE>=FILTERED.length;
+}
+function assetReviewStage(a){
+  const decision=a.latest_review?.decision;
+  if(decision)return decision;
+  return a.qa_status==='pass'?'review_pending':'qa_failed';
+}
+function filterAssets(){
+  if(!DATA)return;
+  const q=$('assetSearch').value.trim().toLowerCase(),status=$('assetReviewFilter').value;
+  ASSET_FILTERED=(DATA.assets||[])
+    .filter(a=>(a.product_ids||[]).length>0)
+    .filter(a=>!q||[
+      a.asset_id,a.salon_id,a.stylist_id,a.copy_payload?.salon_name,
+      a.copy_payload?.area,...(a.product_ids||[])
+    ].some(v=>String(v||'').toLowerCase().includes(q)))
+    .filter(a=>!status||assetReviewStage(a)===status)
+    .sort((a,b)=>{
+      const rank={review_pending:0,changes_requested:1,rejected:2,qa_failed:3,approved:4};
+      return (rank[assetReviewStage(a)]??9)-(rank[assetReviewStage(b)]??9)
+        ||String(a.salon_id||'').localeCompare(String(b.salon_id||''),undefined,{numeric:true})
+        ||String(a.asset_id).localeCompare(String(b.asset_id));
+    });
+  const pageSize=Number($('assetPageSize').value||20),max=Math.max(0,Math.ceil(ASSET_FILTERED.length/pageSize)-1);
+  ASSET_PAGE=Math.min(ASSET_PAGE,max);renderAssets();
+}
+function renderAssets(){
+  const pageSize=Number($('assetPageSize').value||20),start=ASSET_PAGE*pageSize,assets=ASSET_FILTERED.slice(start,start+pageSize);
+  const approved=ASSET_FILTERED.filter(a=>assetReviewStage(a)==='approved').length;
+  $('assetSummary').innerHTML=`<b>${fmt(ASSET_FILTERED.length)} asset</b><span>· この検索内の承認済み ${fmt(approved)} · 1ページ最大 ${fmt(pageSize)}件</span>`;
+  $('assetGrid').innerHTML=assets.map(a=>{
+    const copy=a.copy_payload||{},review=a.latest_review,all=review?.decision==='approved';
+    return `<article class="asset" data-asset="${esc(a.asset_id)}" data-manifest="${esc(a.manifest_sha256)}">
+      <div class="assethead"><div><div class="ttl">${esc(copy.salon_name||`サロンID ${a.salon_id}`)}</div><div class="sub">${esc(a.asset_id)} · ${fmt((a.product_ids||[]).length)} products</div></div><div class="grow"></div>${badge(review?.decision==='approved'?'approved':a.qa_status==='pass'?'review_pending':'qa_failed')}</div>
+      <div class="compare"><div class="pic"><label>元人物画像</label><img loading="lazy" src="${esc(a.source_image_url)}" alt="元人物画像"></div><div class="pic"><label>人物優先V3 完成バナー</label><img loading="lazy" src="${esc(a.banner_url)}" alt="完成バナー"></div></div>
+      <div class="assetbody">
+        <div class="qa"><b style="color:var(--green)">自動QA ${esc(a.qa_status.toUpperCase())}</b><span>· 1080×1350 / 360×450 / hash検証済み</span></div>
+        <div class="links"><a href="${esc(a.source_page_url)}" target="_blank" rel="noopener">元ページを確認 ↗</a><a href="${esc(a.banner_url)}" target="_blank" rel="noopener">完成画像を拡大 ↗</a><a href="${esc(a.mobile_preview_url)}" target="_blank" rel="noopener">360×450表示 ↗</a></div>
+        <div class="checks">${CHECKS.map(([k,l])=>`<label class="check"><input type="checkbox" data-check="${k}" ${all?'checked':''}><span>${esc(l)}</span></label>`).join('')}</div>
+        <div class="reviewfields"><input data-reviewer placeholder="承認者名" value="${esc(review?.reviewer||localStorage.getItem('hb_creative_reviewer')||'')}"><input data-reason placeholder="修正・却下理由（承認時は任意）" value=""><textarea data-note placeholder="補足（修正依頼時は理由を入力）"></textarea></div>
+        <div class="reviewactions"><button class="btn" data-decision="changes_requested">修正依頼</button><button class="btn danger" data-decision="rejected">却下</button><button class="btn pri" data-decision="approved">承認</button></div>
+        <div class="reviewmeta">${review?`最新: ${esc(review.decision)} · ${esc(review.reviewer)} · ${esc(new Date(review.reviewed_at).toLocaleString('ja-JP'))}`:'人手確認は未完了です。'}</div>
+      </div>
+    </article>`}).join('')||'<div class="empty">条件に一致する事前チェック対象assetはありません。</div>';
+  $('assetPageInfo').textContent=ASSET_FILTERED.length?`${fmt(start+1)}–${fmt(Math.min(start+pageSize,ASSET_FILTERED.length))} / ${fmt(ASSET_FILTERED.length)}`:'0 / 0';
+  $('assetPrevPage').disabled=ASSET_PAGE===0;$('assetNextPage').disabled=start+pageSize>=ASSET_FILTERED.length;
+  document.querySelectorAll('[data-decision]').forEach(b=>b.addEventListener('click',()=>submitReview(b.closest('.asset'),b.dataset.decision)));
+}
+async function submitReview(card,decision){
+  const assetId=card.dataset.asset,manifestSha256=card.dataset.manifest,reviewer=card.querySelector('[data-reviewer]').value.trim(),reason=(card.querySelector('[data-reason]').value.trim()||card.querySelector('[data-note]').value.trim());
+  const checklist={};card.querySelectorAll('[data-check]').forEach(c=>checklist[c.dataset.check]=c.checked);
+  if(!reviewer)return alert('承認者名を入力してください。');
+  if(decision==='approved'&&Object.values(checklist).some(v=>!v))return alert('承認には全チェック項目の合格が必要です。');
+  if(decision!=='approved'&&!reason)return alert('修正・却下理由を入力してください。');
+  if(!confirm(`${assetId} を「${decision}」で記録しますか？`))return;
+  localStorage.setItem('hb_creative_reviewer',reviewer);
+  const r=await fetch(REVIEW_API,{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({asset_id:assetId,manifest_sha256:manifestSha256,decision,reviewer,reason,checklist})});onAuthFail(r);
+  const j=await r.json();if(!r.ok)return alert(j.error+(j.detail?`: ${j.detail}`:''));
+  await load();document.querySelector('[data-view="review"]').click();
+}
+function renderPerformance(){
+  const s=DATA.summary,rows=DATA.performance||[];
+  const bySalon={};rows.forEach(r=>{(bySalon[r.salon_id]??={})[r.measurement_window]=r});
+  const salons=Object.keys(bySalon),ready7=salons.filter(id=>(bySalon[id].baseline_28d?.complete_days||0)>=28&&(bySalon[id].post_7d?.complete_days||0)>=7).length;
+  const ready14=salons.filter(id=>(bySalon[id].baseline_28d?.complete_days||0)>=28&&(bySalon[id].post_14d?.complete_days||0)>=14).length;
+  const delta=(value,base)=>value==null||base==null||Number(base)===0?'—':`${((Number(value)/Number(base)-1)*100)>=0?'+':''}${((Number(value)/Number(base)-1)*100).toFixed(1)}%`;
+  $('perfKpis').innerHTML=[
+    ['公開済みproduct',fmt(s.published_products),'新version'],['7日判定可能',fmt(ready7),'baseline 28日 + post 7日'],
+    ['14日判定可能',fmt(ready14),'baseline 28日 + post 14日'],['集計サロン',fmt(salons.length),'公開済みのみ'],
+    ['CTR','クリック÷imp.','加重再計算'],['CPM / ATC','実測値','Bot CPAは不使用']
+  ].map(x=>`<div class="kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div><div class="sub">${x[2]}</div></div>`).join('');
+  const labels={baseline_28d:'切替前28日',post_7d:'切替後7日',post_14d:'切替後14日'};
+  $('performanceRows').innerHTML=rows.length?`<div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>サロンID</th><th>比較窓</th><th>version</th><th>配信日</th><th>Imp.</th><th>CTR</th><th>前比</th><th>CPM</th><th>前比</th><th>Meta ATC</th><th>期間</th></tr></thead><tbody>${rows.map(r=>{const base=bySalon[r.salon_id]?.baseline_28d||{};return `<tr><td class="mono">${esc(r.salon_id)}</td><td>${esc(labels[r.measurement_window]||r.measurement_window)}</td><td>${esc(r.creative_version)}</td><td>${fmt(r.complete_days)}</td><td>${fmt(r.impressions)}</td><td>${r.ctr_percent==null?'—':Number(r.ctr_percent).toFixed(2)+'%'}</td><td>${r.measurement_window==='baseline_28d'?'—':delta(r.ctr_percent,base.ctr_percent)}</td><td>${r.cpm==null?'—':'¥'+fmt(Math.round(Number(r.cpm)))}</td><td>${r.measurement_window==='baseline_28d'?'—':delta(r.cpm,base.cpm)}</td><td>${r.add_to_cart==null?'—':fmt(r.add_to_cart)}</td><td>${esc(r.date_start)} – ${esc(r.date_end)}</td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty">公開イベントとMeta日次実績が入ると、切替前28完全日と切替後7日・14日をここで比較します。</div>';
+}
+function renderRelease(){
+  const s=DATA.summary;
+  const gates=[
+    [s.active_products>0,'本番対象の棚卸し',`${fmt(s.active_products)} product / ${fmt(s.active_salons)} salons`],
+    [s.classified_products===s.active_products,'全productのasset割当または理由付き保留',`${fmt(s.classified_products)} / ${fmt(s.active_products)}`],
+    [s.unique_assets>0&&s.qa_passed_assets===s.unique_assets,'全unique assetの自動QA',`${fmt(s.qa_passed_assets)} / ${fmt(s.unique_assets)}`],
+    [s.unique_assets>0&&s.approved_assets===s.unique_assets,'全unique assetの人手承認',`${fmt(s.approved_assets)} / ${fmt(s.unique_assets)}`],
+    [s.blocking_products===0,'公開可能または理由付き保留',`未解決 ${fmt(s.blocking_products)} / 保留 ${fmt(s.held_products)}`],
+    [s.undocumented_holds===0,'保留理由と次回確認日',`未記録 ${fmt(s.undocumented_holds)}`],
+    [s.full_rollout_ready,'全件preflight','全条件が揃うまで本番実行不可']
+  ];
+  $('gates').innerHTML=gates.map(([ok,t,d])=>`<div class="gate ${ok?'pass':'fail'}"><div class="gicon">${ok?'✓':'!'}</div><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join('');
+  $('snapshotCode').textContent='snapshot: '+DATA.sheet_snapshot_sha256;
+  $('executeBtn').disabled=!s.full_rollout_ready;$('executeBtn').onclick=()=>{if(confirm('GitHub Actionsの本番承認画面を開きます。ダッシュボードから直接Sheetは変更しません。'))window.open(PUBLISH_WORKFLOW,'_blank','noopener')};
+  const canRollback=s.latest_batch&&['published','rollback_required'].includes(s.latest_batch.status);
+  $('rollbackBtn').disabled=!canRollback;$('rollbackBtn').onclick=()=>window.open(PUBLISH_WORKFLOW,'_blank','noopener');
+  $('actionHelp').textContent=s.full_rollout_ready?'全条件が完了しました。Actionsでmanifest hashを再確認して実行します。':`未解決 ${fmt(s.blocking_products)} product。先に素材選定・制作・QA・承認を完了してください。`;
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+b.dataset.view))}));
+['search','stageFilter','subjectFilter','overrideFilter'].forEach(id=>$(id).addEventListener('input',()=>{PAGE=0;applyFilters()}));
+$('prevPage').onclick=()=>{PAGE=Math.max(0,PAGE-1);renderTable()};$('nextPage').onclick=()=>{PAGE+=1;renderTable()};
+['assetSearch','assetReviewFilter','assetPageSize'].forEach(id=>$(id).addEventListener('input',()=>{ASSET_PAGE=0;filterAssets()}));
+$('assetPrevPage').onclick=()=>{ASSET_PAGE=Math.max(0,ASSET_PAGE-1);renderAssets()};$('assetNextPage').onclick=()=>{ASSET_PAGE+=1;renderAssets()};
+$('refreshBtn').onclick=load;$('downloadBtn').onclick=()=>{const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`hb02_creative_status_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.click();URL.revokeObjectURL(a.href)};
+load();
+</script>
+</body>
+</html>

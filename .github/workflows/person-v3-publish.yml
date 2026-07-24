@@ -1,0 +1,141 @@
+name: 人物V3 本番差し替え・復元
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "実行内容"
+        type: choice
+        required: true
+        options:
+          - plan
+          - apply
+          - rollback
+      scope:
+        description: "公開範囲（fullは全active IDの公開/保留理由を照合）"
+        type: choice
+        required: true
+        options:
+          - pilot
+          - wave
+          - full
+      publish_manifest:
+        description: "リポジトリ内publish_manifest.jsonのパス（rollback以外）"
+        type: string
+        required: false
+      confirm_sha256:
+        description: "planが表示したmanifest SHA-256（applyのみ）"
+        type: string
+        required: false
+      batch_id:
+        description: "復元対象batch ID（rollbackのみ・確認のため同じ値を使用）"
+        type: string
+        required: false
+      rollback_reason:
+        description: "復元理由（rollbackのみ）"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: person-v3-production-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # GitHub側でrequired reviewersを設定する本番承認environment。
+    environment: creative-production
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Python dependencies
+        run: pip install --quiet gspread google-auth
+
+      - name: Validate inputs
+        env:
+          ACTION: ${{ inputs.action }}
+          MANIFEST: ${{ inputs.publish_manifest }}
+          CONFIRM: ${{ inputs.confirm_sha256 }}
+          BATCH_ID: ${{ inputs.batch_id }}
+          REASON: ${{ inputs.rollback_reason }}
+        run: |
+          case "$ACTION" in
+            plan)
+              test -n "$MANIFEST" || { echo "publish_manifest is required"; exit 2; }
+              ;;
+            apply)
+              test -n "$MANIFEST" || { echo "publish_manifest is required"; exit 2; }
+              test -n "$CONFIRM" || { echo "confirm_sha256 is required"; exit 2; }
+              ;;
+            rollback)
+              test -n "$BATCH_ID" || { echo "batch_id is required"; exit 2; }
+              test -n "$REASON" || { echo "rollback_reason is required"; exit 2; }
+              ;;
+          esac
+
+      - name: Atomic live inventory snapshot
+        if: inputs.action != 'rollback'
+        env:
+          GOOGLE_SHEETS_KEY_JSON: ${{ secrets.GOOGLE_SHEETS_KEY_JSON }}
+        run: |
+          python3 thumbgen/creative_inventory.py \
+            --google-sheet \
+            --output-dir dashboard/private_snapshots/action-live
+
+      - name: Build non-writing execution plan
+        if: inputs.action != 'rollback'
+        env:
+          SCOPE: ${{ inputs.scope }}
+          MANIFEST: ${{ inputs.publish_manifest }}
+        run: |
+          INVENTORY=""
+          if [ "$SCOPE" = "full" ]; then
+            INVENTORY="--inventory dashboard/private_snapshots/action-live/inventory.json"
+          fi
+          python3 thumbgen/creative_batch.py plan \
+            --publish-manifest "$MANIFEST" \
+            --override-snapshot dashboard/private_snapshots/action-live/thumbnail_override_snapshot.json \
+            $INVENTORY \
+            --output dashboard/private_snapshots/action-live/execution_plan.json
+
+      - name: Apply approved manifest
+        if: inputs.action == 'apply'
+        env:
+          GOOGLE_SHEETS_KEY_JSON: ${{ secrets.GOOGLE_SHEETS_KEY_JSON }}
+          MANIFEST: ${{ inputs.publish_manifest }}
+          CONFIRM: ${{ inputs.confirm_sha256 }}
+        run: |
+          python3 thumbgen/creative_batch.py apply \
+            --publish-manifest "$MANIFEST" \
+            --confirm-sha256 "$CONFIRM" \
+            --actor "${{ github.actor }}" \
+            --output-dir dashboard/private_snapshots/action-run
+
+      - name: Roll back a published batch
+        if: inputs.action == 'rollback'
+        env:
+          GOOGLE_SHEETS_KEY_JSON: ${{ secrets.GOOGLE_SHEETS_KEY_JSON }}
+          BATCH_ID: ${{ inputs.batch_id }}
+          REASON: ${{ inputs.rollback_reason }}
+        run: |
+          python3 thumbgen/creative_batch.py rollback \
+            --batch-id "$BATCH_ID" \
+            --confirm-batch-id "$BATCH_ID" \
+            --actor "${{ github.actor }}" \
+            --reason "$REASON" \
+            --output-dir dashboard/private_snapshots/action-rollback
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: person-v3-${{ inputs.action }}-${{ github.run_id }}
+          path: dashboard/private_snapshots/
+          retention-days: 90

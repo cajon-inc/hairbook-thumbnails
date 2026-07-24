@@ -1,0 +1,14 @@
+# thumbgen PoC / パイプライン依存
+# ローカルPoC（帯合成・品質スコア）はこの2つだけで動く:
+pillow>=10.0
+numpy>=1.24
+requests>=2.31
+
+# 本番パイプライン接続時に追加で必要（override タブ / 動画DL）:
+#   gspread            # thumbnail_override タブ read/upsert
+#   google-auth        # サービスアカウント認証
+#   anthropic          # 方針1 の Claude Vision 判定（任意・ANTHROPIC_API_KEY 使用時）
+#
+# 日本語フォントは pip では入らない。CI は apt で:
+#   sudo apt-get install -y fonts-noto-cjk
+# または fonts/ に NotoSansJP-Bold.otf / NotoSansJP-Regular.otf を同梱（band_overlay が自動検出）。

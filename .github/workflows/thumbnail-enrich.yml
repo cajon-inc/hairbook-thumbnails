@@ -1,0 +1,72 @@
+name: サムネ定期エンリッチ (thumbnail enrich)
+
+# 現行の「壊れたサムネだけ動画再抽出(autofix・catalogリポ 6:07 JST)」の後段。
+# 全カタログ商品に推奨レイアウト(下部スクリム)の情報帯を付与し、低情報画像は改善してから
+# enriched/ に出力・コミットする。結果は enriched/index.html と RESULTS.md で一覧確認できる。
+#
+# シークレット未設定なら自動で dry-run（ローカル素材・ダミー文言）で動き、破綻しない。
+# 本番化: リポジトリ Secrets に GOOGLE_SHEETS_KEY_JSON（フィード/override用）を設定すると live 実行。
+
+on:
+  schedule:
+    - cron: '40 21 * * *'   # 毎日 JST 6:40（autofix 6:07 の後段。override反映後に読む）
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'ローカル素材で試す（override非更新）'
+        type: boolean
+        default: false
+      rollout:
+        description: '段階ロールアウトの割合（0-1）'
+        default: '1.0'
+
+permissions:
+  contents: write          # enriched/ をコミットするため
+
+concurrency:
+  group: thumbnail-enrich
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: 依存（日本語フォント＋ライブラリ）
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          pip install --quiet pillow numpy requests gspread google-auth
+
+      - name: エンリッチ実行 → 結果一覧生成
+        env:
+          # 未設定なら enrich.py は自動で dry-run にフォールバック
+          GOOGLE_SHEETS_KEY_JSON: ${{ secrets.GOOGLE_SHEETS_KEY_JSON }}
+          MIN_PRODUCTS: '300'
+        run: |
+          cd thumbgen
+          DRY=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then DRY="--dry-run"; fi
+          ROLL="${{ github.event.inputs.rollout }}"; ROLL="${ROLL:-1.0}"
+          python3 enrich.py $DRY --rollout "$ROLL"
+          python3 build_results_index.py
+
+      - name: 変更があればコミット
+        run: |
+          git config user.name  "hairbook-enrich"
+          git config user.email "enrich@hairbook.jp"
+          # enriched/ は .gitignore 対象のため -f で追加（本番の配信画像＝raw URLの実体）
+          git add -f enriched/*.jpg enriched/results.json enriched/RESULTS.md enriched/index.html 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "変更なし（差分がないためコミットしません）"
+          else
+            N=$(git diff --cached --name-only -- 'enriched/*.jpg' | wc -l | tr -d ' ')
+            git commit -m "enrich: ${N} thumbnails ($(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M'))"
+            for i in 1 2 3 4; do git push && break || sleep $((2**i)); done
+          fi

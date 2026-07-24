@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+.env
+thumbgen/fonts/
+thumbgen/design_brief.html
+thumbgen/cr_directions.html
+thumbgen/samples/pdf/*_20*.pdf
+
+# enriched/ の生成物はワークフローが -f で自動コミット（ローカルdry-run出力は追跡しない）
+enriched/*.jpg
+enriched/results.json
+enriched/RESULTS.md
+enriched/index.html
+enriched/results_gallery.html
+
+# 管理画面プロトタイプの生成物（build_dashboard.py で再生成）
+dashboard/creative.html
+dashboard/rollout_output/
+dashboard/private_snapshots/
+creative_config.json
+
+# サロンページ由来の人物・店内元画像は公開リポジトリへ含めない。
+# URL・利用根拠・SHA-256だけを manifest / SOURCE_MANIFEST.md で管理し、
+# 必要時に fetch_person_v3_sources.py で再取得する。
+dashboard/source_images/**/*.jpg
+dashboard/source_images/**/*.jpeg
+dashboard/source_images/**/*.png
+dashboard/source_images/**/*.webp
