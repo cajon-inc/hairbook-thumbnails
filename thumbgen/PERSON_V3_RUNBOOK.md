@@ -49,6 +49,29 @@ GOOGLE_SHEETS_KEY_JSON='...' python3 thumbgen/creative_inventory.py \
 
 `dashboard/private_snapshots/`はgitignore対象。元URL、内部ID、override対応をpublic repoへcommitしない。
 
+### 全商品用の既存人物・スタイル画像manifest
+
+動画キャプチャや生成人物を使わず、各商品のHairbook着地ページに掲載された既存のStyle画像を優先して全件manifestを作る。
+
+```bash
+python3 thumbgen/build_person_v3_catalog.py \
+  --output-dir dashboard/private_snapshots/person-v3-full-<YYYYMMDD>
+
+python3 thumbgen/person_v3.py \
+  --manifest dashboard/private_snapshots/person-v3-full-<YYYYMMDD>/manifest.json \
+  --output-dir dashboard/rollout_output/person-v3-full-<YYYYMMDD>
+
+python3 thumbgen/creative_rollout.py qa \
+  --manifest dashboard/private_snapshots/person-v3-full-<YYYYMMDD>/manifest.json \
+  --render-index dashboard/rollout_output/person-v3-full-<YYYYMMDD>/render_index.json \
+  --output dashboard/rollout_output/person-v3-full-<YYYYMMDD>/qa_report.json \
+  --min-source-short-side 200
+```
+
+`classification.json` は、active product IDの100%をassetまたは理由付き保留へ分類する。全く同じsource・コピー・着地のproductは同一assetを共有し、無意味な重複ファイルを作らない。
+
+QA合格後、`hairbook-dashboard/scripts/register_creative_rollout_assets.js` を `--apply` 付きで実行すると、version付き公開Storageへ画像を登録し、`/creative` の事前チェック対象へupsertする。この処理はGoogle Sheetと `thumbnail_override` を変更しない。
+
 CSV exportを入力にする場合:
 
 ```bash

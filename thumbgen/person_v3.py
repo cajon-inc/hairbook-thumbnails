@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 from datetime import datetime, timezone
@@ -224,6 +225,57 @@ def _fit_font(
     longest = max(lines, key=len)
     raise ManifestError(
         f"text does not fit at minimum size {min_size}: {longest!r}"
+    )
+
+
+def _fit_wrapped_text(
+    draw: ImageDraw.ImageDraw,
+    value: str,
+    role: str,
+    start_size: int,
+    min_size: int,
+    max_width: int,
+    max_lines: int = 2,
+) -> tuple[list[str], ImageFont.FreeTypeFont, int]:
+    """Fit one value on one or two lines without truncating the store name."""
+
+    value = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not value:
+        raise ManifestError("wrapped text must be non-empty")
+    for size in range(start_size, min_size - 1, -2):
+        font = _font(role, size)
+        if _text_width(draw, value, font) <= max_width:
+            return [value], font, size
+
+        lines: list[str] = []
+        remaining = value
+        while remaining and len(lines) < max_lines:
+            fit = 0
+            for index in range(1, len(remaining) + 1):
+                if _text_width(draw, remaining[:index], font) <= max_width:
+                    fit = index
+                else:
+                    break
+            if fit <= 0:
+                break
+            if fit < len(remaining):
+                break_at = max(
+                    remaining.rfind(" ", 0, fit + 1),
+                    remaining.rfind("/", 0, fit + 1),
+                    remaining.rfind("・", 0, fit + 1),
+                )
+                if break_at >= max(2, fit // 2):
+                    fit = break_at + (1 if remaining[break_at] != " " else 0)
+            line = remaining[:fit].strip(" /・")
+            if not line:
+                break
+            lines.append(line)
+            remaining = remaining[fit:].strip(" /・")
+        if not remaining and 1 <= len(lines) <= max_lines:
+            return lines, font, size
+    raise ManifestError(
+        f"text does not fit in {max_lines} lines at minimum size "
+        f"{min_size}: {value!r}"
     )
 
 
@@ -444,18 +496,21 @@ def _render_asset(
     area_text = str(copy["area"]).strip()
     salon_name = str(copy["salon_name"]).strip()
     area_font, _ = _fit_font(measure, [area_text], "gothic_bold", 30, 26, 850)
-    name_font, name_size = _fit_font(
+    name_lines, name_font, name_size = _fit_wrapped_text(
         measure,
-        [salon_name],
+        salon_name,
         "mincho",
         int(asset.get("name_size", 56)),
-        38,
+        32,
         850,
+        max_lines=2,
     )
     area_width = _text_width(measure, area_text, area_font)
-    name_width = _text_width(measure, salon_name, name_font)
+    name_width = max(
+        _text_width(measure, line, name_font) for line in name_lines
+    )
     header_width = max(520, min(956, max(area_width, name_width) + 58))
-    header_height = 150
+    header_height = 150 if len(name_lines) == 1 else 214
     header_box = (48, 48, 48 + header_width, 48 + header_height)
     _rounded_shadow(base, header_box, 16, offset=(10, 12), alpha=58)
     draw = ImageDraw.Draw(base, "RGBA")
@@ -467,12 +522,13 @@ def _render_asset(
     )
     draw.text((74, 70), area_text, font=area_font, fill=accent, anchor="lt")
     name_y = 111 if name_size >= 50 else 116
-    draw.text(
+    _draw_lines(
+        draw,
         (72, name_y),
-        salon_name,
-        font=name_font,
-        fill=plate_text,
-        anchor="lt",
+        name_lines,
+        name_font,
+        plate_text,
+        max(42, name_size + 7),
     )
 
     access_lines = [str(line).strip() for line in copy["access"]]

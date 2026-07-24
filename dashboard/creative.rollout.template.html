@@ -119,7 +119,27 @@ td{padding:8px 9px;border-bottom:1px solid #eee9e1;vertical-align:middle}tbody t
   <section class="view" id="view-review" hidden>
     <div class="panel">
       <div class="panelhead"><h2>差し替え前の人手チェック</h2><p>元人物画像・1080×1350完成バナー・360×450縮小表示を比較し、unique assetごとに承認します。</p></div>
-      <div class="panelbody"><div class="assetgrid" id="assetGrid"></div></div>
+      <div class="panelbody">
+        <div class="filters">
+          <input id="assetSearch" placeholder="店舗名・サロンID・product ID・asset IDで検索">
+          <select id="assetReviewFilter">
+            <option value="">確認状態: すべて</option>
+            <option value="review_pending">未確認</option>
+            <option value="approved">承認済み</option>
+            <option value="changes_requested">修正依頼</option>
+            <option value="rejected">却下</option>
+            <option value="qa_failed">QA不合格</option>
+          </select>
+          <select id="assetPageSize">
+            <option value="12">12件表示</option>
+            <option value="20" selected>20件表示</option>
+            <option value="40">40件表示</option>
+          </select>
+        </div>
+        <div class="qa" id="assetSummary"></div>
+        <div class="assetgrid" id="assetGrid"></div>
+        <div class="pager"><span id="assetPageInfo"></span><button class="btn" id="assetPrevPage">前へ</button><button class="btn" id="assetNextPage">次へ</button></div>
+      </div>
     </div>
   </section>
 
@@ -180,7 +200,7 @@ const CHECKS=[
   ['rollback_identified','現在画像と直前overrideの復元先が明確']
 ];
 const STAGES=['source_pending','source_selected','rendered','qa_failed','review_pending','review_rejected','approved','publish_ready','published','rolled_back','hold'];
-let DATA=null,FILTERED=[],PAGE=0;const PAGE_SIZE=50;
+let DATA=null,FILTERED=[],PAGE=0,ASSET_FILTERED=[],ASSET_PAGE=0;const PAGE_SIZE=50;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n||0).toLocaleString('ja-JP');
@@ -212,7 +232,7 @@ function render(){
   $('progress').innerHTML=STAGES.filter(k=>counts[k]).map(k=>`<div class="seg ${k}" style="width:${counts[k]/total*100}%" title="${esc(LABELS[k])}: ${fmt(counts[k])}"></div>`).join('');
   $('legend').innerHTML=STAGES.filter(k=>counts[k]).map(k=>`<span class="leg"><i class="dot ${k==='review_rejected'||k==='qa_failed'?'hold':k}"></i>${esc(LABELS[k])} ${fmt(counts[k])}</span>`).join('');
   const sf=$('stageFilter'),cur=sf.value;sf.innerHTML='<option value="">進行: すべて</option>'+STAGES.map(k=>`<option value="${k}">${esc(LABELS[k])} (${fmt(counts[k]||0)})</option>`).join('');sf.value=cur;
-  applyFilters();renderAssets();renderRelease();renderPerformance();
+  applyFilters();filterAssets();renderRelease();renderPerformance();
 }
 function applyFilters(){
   if(!DATA)return;const q=$('search').value.trim().toLowerCase(),st=$('stageFilter').value,su=$('subjectFilter').value,ov=$('overrideFilter').value;
@@ -238,8 +258,34 @@ function renderTable(){
   $('pageInfo').textContent=`${fmt(start+1)}–${fmt(Math.min(start+PAGE_SIZE,FILTERED.length))} / ${fmt(FILTERED.length)}`;
   $('prevPage').disabled=PAGE===0;$('nextPage').disabled=start+PAGE_SIZE>=FILTERED.length;
 }
+function assetReviewStage(a){
+  const decision=a.latest_review?.decision;
+  if(decision)return decision;
+  return a.qa_status==='pass'?'review_pending':'qa_failed';
+}
+function filterAssets(){
+  if(!DATA)return;
+  const q=$('assetSearch').value.trim().toLowerCase(),status=$('assetReviewFilter').value;
+  ASSET_FILTERED=(DATA.assets||[])
+    .filter(a=>(a.product_ids||[]).length>0)
+    .filter(a=>!q||[
+      a.asset_id,a.salon_id,a.stylist_id,a.copy_payload?.salon_name,
+      a.copy_payload?.area,...(a.product_ids||[])
+    ].some(v=>String(v||'').toLowerCase().includes(q)))
+    .filter(a=>!status||assetReviewStage(a)===status)
+    .sort((a,b)=>{
+      const rank={review_pending:0,changes_requested:1,rejected:2,qa_failed:3,approved:4};
+      return (rank[assetReviewStage(a)]??9)-(rank[assetReviewStage(b)]??9)
+        ||String(a.salon_id||'').localeCompare(String(b.salon_id||''),undefined,{numeric:true})
+        ||String(a.asset_id).localeCompare(String(b.asset_id));
+    });
+  const pageSize=Number($('assetPageSize').value||20),max=Math.max(0,Math.ceil(ASSET_FILTERED.length/pageSize)-1);
+  ASSET_PAGE=Math.min(ASSET_PAGE,max);renderAssets();
+}
 function renderAssets(){
-  const assets=DATA.assets||[];
+  const pageSize=Number($('assetPageSize').value||20),start=ASSET_PAGE*pageSize,assets=ASSET_FILTERED.slice(start,start+pageSize);
+  const approved=ASSET_FILTERED.filter(a=>assetReviewStage(a)==='approved').length;
+  $('assetSummary').innerHTML=`<b>${fmt(ASSET_FILTERED.length)} asset</b><span>· この検索内の承認済み ${fmt(approved)} · 1ページ最大 ${fmt(pageSize)}件</span>`;
   $('assetGrid').innerHTML=assets.map(a=>{
     const copy=a.copy_payload||{},review=a.latest_review,all=review?.decision==='approved';
     return `<article class="asset" data-asset="${esc(a.asset_id)}" data-manifest="${esc(a.manifest_sha256)}">
@@ -253,7 +299,9 @@ function renderAssets(){
         <div class="reviewactions"><button class="btn" data-decision="changes_requested">修正依頼</button><button class="btn danger" data-decision="rejected">却下</button><button class="btn pri" data-decision="approved">承認</button></div>
         <div class="reviewmeta">${review?`最新: ${esc(review.decision)} · ${esc(review.reviewer)} · ${esc(new Date(review.reviewed_at).toLocaleString('ja-JP'))}`:'人手確認は未完了です。'}</div>
       </div>
-    </article>`}).join('')||'<div class="empty">事前チェック対象assetはまだありません。</div>';
+    </article>`}).join('')||'<div class="empty">条件に一致する事前チェック対象assetはありません。</div>';
+  $('assetPageInfo').textContent=ASSET_FILTERED.length?`${fmt(start+1)}–${fmt(Math.min(start+pageSize,ASSET_FILTERED.length))} / ${fmt(ASSET_FILTERED.length)}`:'0 / 0';
+  $('assetPrevPage').disabled=ASSET_PAGE===0;$('assetNextPage').disabled=start+pageSize>=ASSET_FILTERED.length;
   document.querySelectorAll('[data-decision]').forEach(b=>b.addEventListener('click',()=>submitReview(b.closest('.asset'),b.dataset.decision)));
 }
 async function submitReview(card,decision){
@@ -303,6 +351,8 @@ function renderRelease(){
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+b.dataset.view))}));
 ['search','stageFilter','subjectFilter','overrideFilter'].forEach(id=>$(id).addEventListener('input',()=>{PAGE=0;applyFilters()}));
 $('prevPage').onclick=()=>{PAGE=Math.max(0,PAGE-1);renderTable()};$('nextPage').onclick=()=>{PAGE+=1;renderTable()};
+['assetSearch','assetReviewFilter','assetPageSize'].forEach(id=>$(id).addEventListener('input',()=>{ASSET_PAGE=0;filterAssets()}));
+$('assetPrevPage').onclick=()=>{ASSET_PAGE=Math.max(0,ASSET_PAGE-1);renderAssets()};$('assetNextPage').onclick=()=>{ASSET_PAGE+=1;renderAssets()};
 $('refreshBtn').onclick=load;$('downloadBtn').onclick=()=>{const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`hb02_creative_status_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.click();URL.revokeObjectURL(a.href)};
 load();
 </script>
