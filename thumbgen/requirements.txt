@@ -2,9 +2,9 @@
 # ローカルPoC（帯合成・品質スコア）はこの2つだけで動く:
 pillow>=10.0
 numpy>=1.24
+requests>=2.31
 
 # 本番パイプライン接続時に追加で必要（override タブ / 動画DL）:
-#   requests           # 動画・画像の取得
 #   gspread            # thumbnail_override タブ read/upsert
 #   google-auth        # サービスアカウント認証
 #   anthropic          # 方針1 の Claude Vision 判定（任意・ANTHROPIC_API_KEY 使用時）

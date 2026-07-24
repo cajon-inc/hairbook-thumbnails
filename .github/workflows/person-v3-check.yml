@@ -5,7 +5,9 @@ on:
   pull_request:
     paths:
       - "thumbgen/person_v3.py"
+      - "thumbgen/build_person_v3_catalog.py"
       - "thumbgen/fetch_person_v3_sources.py"
+      - "thumbgen/requirements.txt"
       - "thumbgen/creative_inventory.py"
       - "thumbgen/creative_rollout.py"
       - "thumbgen/creative_batch.py"
@@ -19,7 +21,9 @@ on:
       - "claude/catalog-thumbnail-improvement-xw8vo2"
     paths:
       - "thumbgen/person_v3.py"
+      - "thumbgen/build_person_v3_catalog.py"
       - "thumbgen/fetch_person_v3_sources.py"
+      - "thumbgen/requirements.txt"
       - "thumbgen/creative_inventory.py"
       - "thumbgen/creative_rollout.py"
       - "thumbgen/creative_batch.py"
