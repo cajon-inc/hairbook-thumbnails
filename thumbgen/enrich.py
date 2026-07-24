@@ -4,7 +4,7 @@
 
   1. 有効な元画像を取得（autofix済みがあればそれ、無ければHairBookサムネ）
   2. 情報が少なければ改善（improve.py: broken=再抽出フラグ / low_info=静止画補正）
-  3. 推奨レイアウト（下部スクリム）でサロン名＋エリアの帯を合成
+  3. 通常画像は推奨レイアウトで帯を合成。承認済み complete_banner は二重合成せず使用
   4. content-hash で変化時のみ enriched/<hash>.jpg を更新（差分だけ）
   5. thumbnail_override タブに id→enriched raw URL を upsert（本番フィードH1が最優先参照）
   6. 更新結果を results.json に出力（build_results_index.py が一覧化）
@@ -25,7 +25,7 @@ import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 import overlays
 from improve import assess, improve
@@ -69,6 +69,10 @@ def product_hash(product_id: str) -> str:
 
 def _sha(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def in_rollout(key: str, ratio: float) -> bool:
@@ -151,9 +155,13 @@ def upsert_override(gc, entries: list[dict]) -> None:
 # ─────────────────────────────────────────────
 # メイン
 # ─────────────────────────────────────────────
-def load_creative_config() -> dict:
+def load_creative_config(explicit_path: str | Path | None = None) -> dict:
     """管理画面が書き出す id別設定 {id: {design, salon, area, badge, enabled}} を読む。"""
-    for p in (REPO / "creative_config.json", ROOT / "creative_config.json"):
+    candidates = []
+    if explicit_path:
+        candidates.append(Path(explicit_path))
+    candidates.extend((REPO / "creative_config.json", ROOT / "creative_config.json"))
+    for p in candidates:
         if p.exists():
             try:
                 return json.loads(p.read_text(encoding="utf-8"))
@@ -162,18 +170,25 @@ def load_creative_config() -> dict:
     return {}
 
 
-def run(dry_run: bool, limit: int, rollout: float, design: str) -> dict:
+def run(
+    dry_run: bool,
+    limit: int,
+    rollout: float,
+    design: str,
+    config_path: str | Path | None = None,
+) -> dict:
     gc = None if dry_run else _gspread_from_env()
     items = worklist_dry() if gc is None else worklist_live(gc)
     mode = "dry-run" if (dry_run or gc is None) else "live"
     if limit:
         items = items[:limit]
-    config = load_creative_config()   # 管理画面の個別選択（無ければ全件デフォルト）
+    config = load_creative_config(config_path)   # 管理画面の個別選択（無ければ全件デフォルト）
 
     ENRICHED.mkdir(exist_ok=True)
     results, entries = [], []
     counts = {"total": 0, "updated": 0, "unchanged": 0, "enhanced": 0,
-              "needs_reextract": 0, "disabled": 0, "skipped_rollout": 0, "failed": 0}
+              "needs_reextract": 0, "complete_banner": 0, "disabled": 0,
+              "skipped_rollout": 0, "failed": 0}
 
     for it in items:
         counts["total"] += 1
@@ -192,16 +207,60 @@ def run(dry_run: bool, limit: int, rollout: float, design: str) -> dict:
         salon = cfg.get("salon") or it["salon"]
         area = cfg.get("area") if cfg.get("area") is not None else it["area"]
         badge = cfg.get("badge", "")
-        # 管理画面で選んだ画像ソース（入稿/別フレーム/AI生成のホスト先URL）を優先
+        source_params = cfg.get("source_params")
+        source_params = source_params if isinstance(source_params, dict) else {}
+        render_mode = cfg.get("render_mode") or source_params.get("render_mode") or "overlay"
+        # 管理画面で選んだ承認済み画像ソースを優先
         src_link = cfg.get("source_url") or cfg.get("source") or ""
         src_link = src_link if isinstance(src_link, str) and (src_link.startswith("http") or src_link.startswith("/")) else it["image_link"]
         try:
             data = load_image(src_link)
-            im = Image.open(io.BytesIO(data))
-            a = assess(im)
-            improved, action = improve(im, a)
-            banded = overlays.render(improved, item_design, salon, area, badge)
-            buf = io.BytesIO(); banded.save(buf, "JPEG", quality=88)
+            im = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
+            if render_mode == "complete_banner":
+                approval_status = (
+                    cfg.get("approval_status")
+                    or source_params.get("approval_status")
+                    or ""
+                )
+                allowed = {"approved"}
+                if mode == "dry-run":
+                    allowed.add("approved_for_dry_run")
+                if approval_status not in allowed:
+                    raise ValueError(
+                        f"complete_banner requires approval_status in {sorted(allowed)}"
+                    )
+                expected_sha256 = (
+                    cfg.get("asset_sha256")
+                    or source_params.get("asset_sha256")
+                    or source_params.get("output_sha256")
+                    or ""
+                )
+                if not expected_sha256:
+                    raise ValueError("complete_banner requires asset_sha256")
+                actual_sha256 = _sha256(data)
+                if actual_sha256 != expected_sha256:
+                    raise ValueError(
+                        "complete_banner sha256 mismatch "
+                        f"(expected={expected_sha256}, actual={actual_sha256})"
+                    )
+                if im.size != (1080, 1350):
+                    raise ValueError(
+                        f"complete_banner must be 1080x1350, got {im.size[0]}x{im.size[1]}"
+                    )
+                a = assess(im)
+                banded = im
+                action = "complete_banner"
+            else:
+                a = assess(im)
+                improved, action = improve(im, a)
+                banded = overlays.render(improved, item_design, salon, area, badge)
+            buf = io.BytesIO()
+            banded.save(
+                buf,
+                "JPEG",
+                quality=92 if render_mode == "complete_banner" else 88,
+                subsampling=0 if render_mode == "complete_banner" else 2,
+            )
             out_bytes = buf.getvalue()
         except Exception as e:
             counts["failed"] += 1
@@ -220,9 +279,14 @@ def run(dry_run: bool, limit: int, rollout: float, design: str) -> dict:
             counts["enhanced"] += 1
         if action == "needs_reextract":
             counts["needs_reextract"] += 1
+        if action == "complete_banner":
+            counts["complete_banner"] += 1
 
         results.append({"id": pid, "hash": h, "salon": salon, "area": area,
                         "design": item_design, "badge": badge,
+                        "render_mode": render_mode,
+                        "asset_id": source_params.get("asset_id", ""),
+                        "asset_version": source_params.get("asset_version", ""),
                         "verdict": a["verdict"], "mean": a["mean"], "std": a["std"],
                         "action": action, "changed": changed,
                         "url": f"{RAW_BASE}/enriched/{h}.jpg"})
@@ -261,8 +325,9 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--rollout", type=float, default=1.0, help="段階ロールアウトの割合(0-1)")
     ap.add_argument("--design", default=DESIGN, choices=list(overlays.LAYOUTS))
+    ap.add_argument("--config", default="", help="creative_config JSONの明示パス")
     args = ap.parse_args()
-    run(args.dry_run, args.limit, args.rollout, args.design)
+    run(args.dry_run, args.limit, args.rollout, args.design, args.config or None)
 
 
 if __name__ == "__main__":

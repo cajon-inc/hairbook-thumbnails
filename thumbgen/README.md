@@ -1,9 +1,8 @@
 # thumbgen — カタログ広告サムネイル改善プロジェクト (v2)
 
-現行の「壊れたサムネだけ直す」自動修正パイプラインを、**全サムネを継続的により良くする**基盤へ
-アップデートするためのツール群。企画・PoC段階（本番未接続）。
+現行の「壊れたサムネだけ直す」自動修正パイプラインと、人物優先V3完成バナーの承認・公開・復元を扱うツール群。
 
-- ステータス: PoC / 提案段階（上長承認・意思決定待ち）
+- ステータス: 人物V3のpublisher・事前チェック基盤まで実装済み。本番画像は未変更で、人手承認と全件制作待ち。
 - 開発ブランチ: `claude/catalog-thumbnail-improvement-xw8vo2`
 - 位置づけ: 既存 `cajon-inc/hairbook-ad-local-catalog` の autofix パイプラインの **拡張**（新規基盤ではない）
 
@@ -72,6 +71,12 @@ override タブへ upsert → 既存の H1 数式がそのまま配信に反映
 | `enrich.py` | **本番パイプライン**。全件に推奨レイアウト（下部スクリム）の帯を付与し `enriched/` に出力・override upsert |
 | `overlays.py` | 広告CRデザイン方向6案。`bottom_scrim`(推奨)/`lower_third`/`frosted_bar`/`corner_tag`/`editorial`/`top_band` |
 | `improve.py` | **低情報画像の改善**。broken=動画再抽出フラグ／low_info=オートコントラスト等で底上げ |
+| `person_v3.py` | サロンページ人物画像＋正本文字から人物優先V3完成バナーをmanifest駆動で生成 |
+| `fetch_person_v3_sources.py` | 元画像をHTTPS取得し、SHA-256・画像デコード・最小寸法を検証（画像本体はgit管理外） |
+| `creative_inventory.py` | 本番フィードとoverrideの読み取り専用snapshot／対象分類 |
+| `creative_rollout.py` | 自動QA、人手レビュー、preflight、publish／rollback dry-run manifest |
+| `creative_batch.py` | 承認済みmanifestだけをSHA確認・楽観ロック・全量snapshot付きで公開し、batch単位で復元 |
+| `PERSON_V3_RUNBOOK.md` | 人物V3制作・事前チェックの安全な実行手順 |
 | `build_results_index.py` | 更新結果の一覧生成（`enriched/RESULTS.md`・`index.html`・共有用ギャラリー） |
 | `band_overlay.py` | 帯合成（上部帯）。`BandSpec` 差替でパターンA〜D（サロン名/価格/特典/メニュー） |
 | `frame_quality.py` | 品質スコアリング（軽量ヒューリスティック＋Claude Vision プラグイン口） |
@@ -95,11 +100,16 @@ override タブへ upsert → 既存の H1 数式がそのまま配信に反映
 ### 実行
 ```bash
 pip install -r requirements.txt                 # + 日本語フォント(fonts-noto-cjk)
+python3 fetch_person_v3_sources.py \
+  --manifest ../dashboard/source_images/person_v3_manifest.sample.json
+                                                 # 人物V3元画像を取得・完全性検証
 python3 enrich.py --dry-run                      # ローカル素材で全件エンリッチ → enriched/
 python3 build_results_index.py                   # enriched/ の結果を一覧化
 python3 overlays.py in.jpg --layout bottom_scrim --salon "サロン名" --area "エリア" -o out.jpg
 python3 improve.py in.jpg out.jpg                # 低情報画像の改善だけ試す
 ```
+
+人物V3の本番公開と復元は、通常の `enrich.py` から分離している。操作方法と安全条件は `PERSON_V3_RUNBOOK.md` を参照。全件状況、asset承認、公開後の切替前後比較は、認証付きのHairbook Dashboard `/creative` を正とする。
 
 ---
 

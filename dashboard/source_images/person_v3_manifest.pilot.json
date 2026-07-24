@@ -1,0 +1,146 @@
+{
+  "schema_version": "hairbook.person_v3_manifest.v1",
+  "design_version": "person_v3_layered_v1",
+  "environment": "pilot_draft",
+  "account_scope": "HB_02",
+  "experiment": {
+    "experiment_id": "hb02_person_v3_pilot_20260724",
+    "rollout_batch": "pilot",
+    "baseline": "28_complete_days_before_meta_fetch_confirmed_at",
+    "evaluation": "first_7_complete_days_then_14_complete_days",
+    "primary_metrics": [
+      "ctr",
+      "cpm"
+    ],
+    "secondary_metrics": [
+      "meta_add_to_cart"
+    ],
+    "aggregation": "salon_id_x_creative_version_x_complete_day",
+    "exclude": [
+      "switch_day",
+      "mixed_old_new_day",
+      "incomplete_day"
+    ]
+  },
+  "assets": [
+    {
+      "asset_id": "salon-61-belta-person-v3-pilot",
+      "salon_id": "61",
+      "product_ids": [
+        "61_01KT8YQ8NH1XW5AQA7X2N7NJ3Z",
+        "61_01KP59TNB9NGZ3C1N5A745HNWE"
+      ],
+      "landing_url": "https://hairbook.jp/salons/61/",
+      "theme": "ink_gold",
+      "source": {
+        "path": "pilot/belta-style-32331-3.jpg",
+        "page_url": "https://www.artefice-hair.com/style/32331",
+        "image_url": "https://www.artefice-hair.com/wp-content/uploads/2023/07/S__460972039.jpg",
+        "sha256": "b5a0c25a49ec58efe605ccef8283efc489963a1e032e1053c95ca93a7c4ac60d",
+        "source_type": "official_salon_model_style",
+        "subject_scope": "salon"
+      },
+      "image": {
+        "focal_x": 0.5,
+        "focal_y": 0.3,
+        "brightness": 1.0,
+        "saturation": 0.92,
+        "contrast": 1.02
+      },
+      "copy": {
+        "area": "大阪・西梅田／北新地",
+        "salon_name": "belta by artefice",
+        "access": [
+          "西梅田・北新地 徒歩3分",
+          "JR大阪・梅田 徒歩7分"
+        ],
+        "headline": [
+          "魅力を活かす、",
+          "似合わせヘアデザイン。"
+        ],
+        "support": "髪の健康を考えたケアもご相談ください",
+        "cta": "詳しく見る"
+      }
+    },
+    {
+      "asset_id": "salon-5427-luck-tsujido-raimu-person-v3-pilot",
+      "salon_id": "5427",
+      "stylist_id": "11798",
+      "product_ids": [
+        "5427_11798_01KMPGWPHMXDGQ82ACR7TF3TDY",
+        "5427_11798_01KMPGVKSGETTXXW4TTFPD1WWQ"
+      ],
+      "landing_url": "https://hairbook.jp/staffs/11798/",
+      "theme": "ink_gold",
+      "source": {
+        "path": "pilot/luck-tsujido-raimu-style-2.jpg",
+        "page_url": "https://kenje-group.co.jp/salon/luck-tsujido/staff/2128/",
+        "image_url": "https://b-merit.jp/uploads/style/b8e12323438af7a4ba1b7b5139cc5a2e.jpg",
+        "sha256": "f4b0ff8c440bb705ae9e3adc2eb690130d6bc04f9ec60d1f1f751aa793d69e8b",
+        "source_type": "official_stylist_model_style",
+        "subject_scope": "stylist"
+      },
+      "image": {
+        "focal_x": 0.62,
+        "focal_y": 0.32,
+        "brightness": 1.0,
+        "saturation": 0.94,
+        "contrast": 1.0
+      },
+      "copy": {
+        "area": "神奈川・辻堂",
+        "salon_name": "LUCK 辻堂",
+        "access": [
+          "JR辻堂駅 北口徒歩1分",
+          "Luz湘南辻堂 5F"
+        ],
+        "headline": [
+          "デザインカラーで、",
+          "自分らしい可愛さを。"
+        ],
+        "support": "スタイリスト らいむ｜インナー・イヤリングカラーも対応",
+        "cta": "スタイルを見る"
+      }
+    },
+    {
+      "asset_id": "salon-5405-niii-azuma-person-v3-pilot",
+      "salon_id": "5405",
+      "stylist_id": "2330",
+      "product_ids": [
+        "5405_2330_01KPN2QTX7DHM9M0HXJSY5XT60",
+        "5405_2330_01KPN2Q0G0XGDENCCWF45RCCYY"
+      ],
+      "landing_url": "https://hairbook.jp/staffs/2330/",
+      "theme": "ink_gold",
+      "source": {
+        "path": "pilot/niii-azuma-person.webp",
+        "page_url": "https://carta.me/niii/",
+        "image_url": "https://carta.me/_img/ja/article/1480/image/_/image.webp",
+        "sha256": "2fa8b49508daf31db7dfc327793d7f8027adf5e57a7c4c89d91df1aa095f1375",
+        "source_type": "official_staff_portrait",
+        "subject_scope": "stylist"
+      },
+      "image": {
+        "focal_x": 0.5,
+        "focal_y": 0.0,
+        "brightness": 1.0,
+        "saturation": 0.9,
+        "contrast": 1.02
+      },
+      "copy": {
+        "area": "大阪・西梅田／北新地",
+        "salon_name": "Niii by carta",
+        "access": [
+          "西梅田・北新地 徒歩3分",
+          "大阪駅 徒歩5分"
+        ],
+        "headline": [
+          "ボブも、デザインカラーも。",
+          "新しい似合うをご提案。"
+        ],
+        "support": "ディレクター 東 佑美のスタイルページへ",
+        "cta": "スタイルを見る"
+      }
+    }
+  ]
+}

@@ -1,10 +1,16 @@
 # クリエイティブ管理画面 実装計画
 
-- 目的: カタログサムネを一覧化し、**サロン別のゼロベース生成画像1〜2案から切替**でき、切替後の配信結果まで振り返れる管理画面。
-- 参照: 既存ダッシュボード `hairbook-dashboard.vercel.app/creative`（Next.js/Vercel想定）の `/creative` に載せる。
-- 現行プロトタイプ: `dashboard/creative.html`（クリック可能・Canvas合成）は「現在画像＋ゼロベース生成案1〜2」と「画像設定／配信結果」の2タブへ更新済み。生成画像と指標はAPI未接続のため、画面検証用デモとして明示している。
-- サロン情報と公式リンク先から画像をゼロベースで個別生成する方針は、
-  [`ZERO_BASE_IMAGE_GENERATION_PLAN.md`](ZERO_BASE_IMAGE_GENERATION_PLAN.md) を正とする。
+> **2026-07-24 方針更新**
+> 人物・内装は架空生成せず、各サロンページ内のモデル／スタイル画像と店内写真を使用する。対象画像は広告・編集利用が可能な前提とし、補正・4:5最適化を行い、店舗名・エリア・アクセス・訴求・CTAはコードで正確に合成する。
+>
+> **全件展開の最新決定**
+> 標準は人物画像版V3レイヤード。店内写真版は例外承認時だけ使用し、公開前に自動QA、人手事前チェック、バッチpreflightを必須にする。具体的な展開計画は [`STATIC_CATALOG_PERSON_V3_ROLLOUT_PLAN.md`](STATIC_CATALOG_PERSON_V3_ROLLOUT_PLAN.md) を参照。
+
+- 目的: カタログサムネを一覧化し、**現在画像と承認済み人物画像版V3を安全に切替**でき、例外の店内写真版を含めて切替後の配信結果まで振り返れる管理画面。
+- 参照: 既存Hairbook Dashboardの `https://hairbook-dashboard.vercel.app/creative`。
+- 現行実装: 既存認証付きの静的HTML＋Vercel Functions。全件進行、元人物画像との事前チェック、append-only承認、配信結果、実行・復元gateを実フィードとprivate Supabaseへ接続済み。Canvasのダミー生成やサンプル指標は使わない。
+- 掲載画像の取得、選定、編集、QA、承認、配信の正本は、
+  [`SALON_PAGE_PERSON_IMAGE_BANNER_PLAN.md`](SALON_PAGE_PERSON_IMAGE_BANNER_PLAN.md) とする。
 
 ---
 
@@ -12,15 +18,16 @@
 
 ```text
 [管理画面 /creative]
-  ├─ 画像設定: 現在画像＋生成案1〜2の比較／承認／切替
+  ├─ 画像設定: 現在画像＋人物画像版V3の比較／QA／承認／切替
+  │              （店内写真版は例外承認時だけ表示）
   └─ 配信結果: 切替履歴／画像バージョン別KPI
         │
-        ├─ private creative config / asset metadata
+        ├─ private source image / source metadata / creative config / asset metadata
         ├─ creative_publish_events（不変の切替履歴）
-        └─ 承認済み生成画像だけpublic保存
+        └─ 承認済み最終バナーだけpublic保存
                          │
                          ▼
-[enrich.py] 同一帯デザインで合成 → [thumbnail_override] → [Meta]
+[creative_batch.py] 承認済み完成バナーを限定更新 → [thumbnail_override] → [Meta]
                                                              │
                                                              ▼
                     [Meta product_id日次実績] → [creative_product_daily]
@@ -47,7 +54,9 @@
 | area（既定） | `address.city`（例「大阪市中央区」） |
 | verdict（情報判定） | `enrich` の `results.json`（ok/low_info/broken） |
 | 現在画像 | フィードと `thumbnail_override` の有効URL |
-| 生成案1〜2 | private asset metadataの最新承認可能版 |
+| 人物画像版V3／例外の店内写真版 | 利用可能な掲載画像を加工したprivate asset metadataの最新承認可能版 |
+| source画像 | private source metadata。元ページ、画像hash、source種別、人物種別、利用文脈 |
+| source状態 | discovered／selected／quality_hold／stale |
 | 現在の設定 | private `creative_config` |
 | 配信結果 | `creative_product_daily` を画像バージョン別に集計 |
 
@@ -57,24 +66,27 @@
 {
   "44528_01KJ...": { "design": "bottom_scrim", "salon": "hair salon Lumière",
     "area": "東京都渋谷区・表参道", "badge": "", "enabled": true,
-    "source": "generated",
+    "source": "edited_banner",
     "source_url": "https://raw.githubusercontent.com/.../<anonymous-hash>.jpg",
-    "source_params": {"asset_id": "<anonymous id>", "candidate_slot": "pattern_1",
-      "asset_version": 1, "representation": "concept_image"} },
+    "source_params": {"asset_id": "<anonymous id>", "candidate_slot": "model_image",
+      "asset_version": 1, "representation": "salon_page_person_image_edit",
+      "render_mode": "complete_banner"} },
   "44530_01KQ...": { "enabled": false }
 }
 ```
 - `design`: 新10種。`bottom_scrim`（標準）/ `caption` / `magazine` / `letterbox` / `namecard` / `tategaki` / `frameline` / `polaroid` / `poster` / `plate`。
-- `source_url`: 管理画面で選んだ**承認済みゼロベース生成画像**のホスト先。生成案1または2だけを指定する。
+- `source_url`: 管理画面で選んだ**承認済み人物画像版V3または例外の店内写真版バナー**のホスト先。
+- `render_mode`: `complete_banner` は文字合成済みで帯を重ねない。`overlay` は編集済み背景へPillow側で帯を合成する。初期実験は1方式に固定する。
 - 現在画像へ戻す場合は、公開前に保存した直前overrideを復元する。`source_url` を単純削除してautofix済み画像を失わない。
 - 省略キーは既定にフォールバック（`enabled` 既定 true、`design` 既定 bottom_scrim）。
 
 ### 画像ソースのホスティング
 
-- 切替候補は「生成案1」「生成案2」の最大2案。入稿、動画キャプチャ、疑似フレーム、既存画像のAI加工は扱わない。
+- 標準の切替候補は「人物画像版V3」1案。店内写真版は人物sourceがない場合の例外承認時だけ扱う。動画キャプチャ、疑似フレーム、架空人物・内装生成は扱わない。
+- 編集元は対象サロンページまたは店舗掲載ページ内の利用可能なモデル／スタイル画像を優先し、画質・構図・訴求との一致で1枚を選定する。
 - 承認済み最終JPGだけを匿名ハッシュ名でpublic画像リポジトリへ保存し、`source_url` に格納する。
-- ブリーフ、プロンプト、候補履歴、承認者、切替履歴、配信実績はprivate側へ保存する。
-- 再生成時は既存候補を上書きせず、同じ `candidate_slot` の `asset_version` を増やす。
+- 元モデル画像・元店内写真、元ページ、利用前提version、編集指示、候補履歴、承認者、切替履歴、配信実績はprivate側へ保存する。
+- 再編集時は既存候補を上書きせず、同じ `candidate_slot` の `asset_version` を増やす。元人物を変更した場合はsource versionも増やし、再承認する。
 
 ### 画像切替履歴
 
@@ -88,37 +100,33 @@ Metaの `product_id` 日次ブレイクダウンから spend / impressions / cli
 
 ## 3. アーキテクチャ
 
-### フロント（Next.js `/creative`）
+### フロント（既存Dashboard `/creative`）
 
-プロトタイプ `creative.html` をReactに移植。構成:
-- **一覧グリッド**: カード（現在画像・生成案番号・配信開始日・CTR・切替前比・impressions・状態チップ）
-- **画像設定タブ**: 現在画像（比較／復元用）＋生成案1＋任意の生成案2。帯プレビュー、根拠、QA、承認、切替
-- **配信結果タブ**: 切替タイムライン、画像バージョン別KPI、前後比較、案1/2比較、holdout比較、除外日と母数
-- **絞り込み/検索**: 画像種別・結果状態・有効/無効・要改善・サロン名/エリア検索
-- **一括操作**: 選択に対しデザイン一括適用・有効/無効
-- **公開**: 承認済み生成案をPOST → publish event作成 → パイプライン起動
+現行の構成:
+- **全件進行**: 読込時点のin-stock product IDを分母に、現在画像、サロン／スタイリスト単位、進行、QA、承認、batch、overrideを表示。
+- **事前チェック**: 元人物画像、1080×1350完成バナー、360×450プレビュー、元ページ、8項目、承認者、理由をunique asset単位で保存。
+- **配信結果**: 切替前28完全日、切替後7日・14日のCTR、CPM、商品別Meta ATCをサロン単位で比較。
+- **実行・復元**: 全productが公開可能または理由・次回確認日付き保留になるまで本番操作を無効化。実処理はGitHub Actionsの承認environmentへ遷移。
+- **絞り込み/検索**: 進行、サロン／スタイリスト、override、product ID、参照タイトル。
 
-画像ソース欄から、旧プロトタイプの「入稿」「動画から別フレーム」「AI生成（フィルタ加工）」は削除済み。
+画像ソース欄は標準では「現在画像」「人物画像版V3」に限定し、店内写真版は例外承認時だけ追加する。旧プロトタイプのゼロベース生成説明は、サロン掲載画像の編集説明へ差し替える。
 
-### プレビュー（2層）
+### プレビュー
 
-- **即時**: ブラウザ内Canvasで合成（プロトタイプの `overlays.py`→JS移植をそのまま流用）。編集の即応性。
-- **正**: 公開時にサーバ側 `overlays.py`(Pillow) が生成した `enriched/<hash>.jpg` が最終成果物（Canvasは近似プレビュー）。
+- **正**: manifest駆動のPillow rendererが出力した1080×1350完成JPG。
+- **確認**: 同じ完成JPGから作った360×450チェック画像。ブラウザCanvasによる近似合成は承認に使わない。
 
 ### 保存先
 
-- private: `creative_config`、ブリーフ、プロンプト、全候補、QA、承認、`creative_publish_events`、`creative_product_daily`。
+- private: 元モデル画像・元店内写真、source URL／hash、利用前提version、編集指示、`creative_config`、全候補、QA、承認、`creative_publish_events`、`creative_product_daily`。
 - public: 承認済み最終JPGと匿名アセットIDだけ。
 - repoコミット案を採用する場合も、public `hairbook-thumbnails` へprivateメタデータを置かない。
 
-### API（Next.js Route Handlers / Vercel Functions）
+### API（Vercel Functions）
 
-- `GET /api/creative` … 一覧アイテム（§2）を返す（フィード＋results.json＋config結合）
-- `POST /api/creative/:salon_id/generate` … 生成案1または2を1候補ずつ生成
-- `POST /api/creative/:salon_id/approve` … QA済み候補を承認
-- `POST /api/creative/:salon_id/publish` … 差分config保存＋publish event作成＋ワークフロー起動
-- `POST /api/creative/:salon_id/rollback` … 直前画像を復元し、rollback eventを作成
-- `GET /api/creative/:salon_id/performance` … 画像バージョン別配信実績と比較を返す
+- `GET /api/creative-status` … 本番フィード、override、公開event、private rollout表、配信結果を結合。
+- `POST /api/creative-review` … manifest hashに結び付くappend-onlyのassetレビューを保存。
+- 公開・復元APIはDashboardに持たせず、manifest SHAとbatch IDの再入力を要求するGitHub Actionsへ分離。
 
 ---
 
@@ -127,35 +135,34 @@ Metaの `product_id` 日次ブレイクダウンから spend / impressions / cli
 `thumbgen/enrich.py` は既に `creative_config.json` を読み、id別に
 `design / salon / area / badge / enabled` を反映してエンリッチする（`enabled:false` は帯を付けない）。
 
-ただし、生成画像の承認検証、画像バージョン、publish event、直前overrideへのロールバック、Meta実績取得は未実装。新10デザインも `overlays.py` 未移植のため、現状のまま本番接続はしない。
+`complete_banner` の承認・hash検証、二重合成防止、publisher、全量snapshot、append-only event、batch復元は実装・テスト済み。人物V3は `overlays.py` を通らないため、管理画面の新10デザイン未移植とは分離して公開できる。残タスクは全asset制作・承認、cajon-inc本体へのworkflow merge、本番preflightであり、現時点の本番画像変更は0件。
 
 ---
 
 ## 5. フェーズ
 
-1. **実データ読み取り**: フィード＋privateブリーフ＋configを結合。
-2. **生成案1〜2**: ゼロベース生成、QA、承認。候補上限を2へ固定。
-3. **UI更新（プロトタイプ完了）**: 入稿・動画フレーム・フィルタ加工を削除し、「画像設定」「配信結果」の2タブを実装。本番API接続はPhase 4以降。
-4. **保存と公開**: private config保存、public JPG保存、publish event作成、enrich起動。
-5. **実績取得**: Meta `product_id` 日次実績＋ATCを取得し、画像バージョンへ時系列結合。
-6. **振り返り**: 前後比較、案1/2比較、holdout比較、母数・除外日表示。
-7. **運用**: 承認、段階ロールアウト、直前overrideへの即ロールバック。
+1. **利用前提・編集ルール**: 対象画像は利用可能という前提、選定基準、禁止編集を確定。
+2. **source選定**: 8サロン程度でページ内のモデル／スタイル画像と店内写真を分類し、画質・構図・訴求からsourceを確定。
+3. **人物V3を制作**: 人物画像版V3を補正・4:5最適化・コード合成し、QA、承認。人物sourceがない場合は保留。
+4. **UI更新（完了）**: 元画像・最終バナー・全件進行・配信結果・実行復元へ更新。
+5. **保存と公開基盤（完了）**: private metadata／承認保存、public最終JPG、publish event、限定publisher。
+6. **実績取得基盤（完了）**: Meta `product_id` 日次実績＋商品別ATCを画像versionへ時系列結合。
+7. **振り返りと運用**: 前後・holdout比較、source変更監視、段階ロールアウト、直前overrideへの即ロールバック。店内版を例外配信した場合だけ画像種別比較を追加。
 
 ---
 
 ## 6. 未確定・要決定
 
-- private config／publish events／日次実績の保存先。
-- Metaアカウントの集計タイムゾーンと「完全日」の確定方法。
 - 最小impressions・最低観測日数など、結果を参考値から判定可能へ切り替える基準。
 - サロン名の専用値をフィード生成前データからどう渡すか（`title` は使わない）。
-- プレビューをCanvas近似のみにするか、公開前にサーバ生成の実画像も見せるか。
-- 既存 `hairbook-dashboard` リポへのアクセス（このセッションに追加できれば直接移植可能）。
+- holdoutを最終waveまで何%残すか。
+- cajon-inc本体で `creative-production` environmentのrequired reviewerを誰にするか。
 
 ---
 
 ## 7. このリポジトリの関連物
 
-- `dashboard/creative.html`（生成案1〜2・切替履歴・サンプル配信結果を含む現行プロトタイプ）／ `creative.template.html`＋`build_dashboard.py`（生成）
+- `dashboard/creative.html`／`creative.rollout.template.html`＋`build_dashboard.py`（認証付き実装の生成元）
+- `dashboard/SALON_PAGE_PERSON_IMAGE_BANNER_PLAN.md`（人物画像の取得・選定・編集・QA・配信の正本）
 - `thumbgen/enrich.py`（creative_config対応済みパイプライン）／ `overlays.py`（旧10デザイン）／ `improve.py`（低情報改善）
 - `thumbgen/build_results_index.py`（結果一覧）／ `.github/workflows/thumbnail-enrich.yml`（定期実行）

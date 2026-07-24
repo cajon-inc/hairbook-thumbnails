@@ -1,0 +1,69 @@
+{
+  "schema_version": "hairbook.person_v3_review.v1",
+  "environment": "sample",
+  "manifest_sha256": "dcfb7b7b118712a1a533ec19f64a823a40781bb8c8799bdef321c3a1a3466252",
+  "qa_report_sha256": "",
+  "created_at": "2026-07-24T03:25:00+00:00",
+  "assets": [
+    {
+      "asset_id": "forte-omotesando-person-v3",
+      "salon_id": "sample-forte-omotesando",
+      "qa_status": "pass",
+      "decision": "approved_for_dry_run",
+      "reviewer": "Codex visual QA (dry-run only)",
+      "reviewed_at": "2026-07-24T03:25:00+00:00",
+      "checklist_version": "person_v3_pre_publish_v1",
+      "checklist": {
+        "source_match": true,
+        "person_unchanged": true,
+        "safe_crop": true,
+        "copy_matches_landing": true,
+        "no_misleading_claim": true,
+        "mobile_readable": true,
+        "no_unwanted_text": true,
+        "rollback_identified": true
+      },
+      "notes": "試作3店舗のdry-run確認用。本番公開承認には使用しない。"
+    },
+    {
+      "asset_id": "kenje-hiratsuka-lusca-person-v3",
+      "salon_id": "sample-kenje-hiratsuka-lusca",
+      "qa_status": "pass",
+      "decision": "approved_for_dry_run",
+      "reviewer": "Codex visual QA (dry-run only)",
+      "reviewed_at": "2026-07-24T03:25:00+00:00",
+      "checklist_version": "person_v3_pre_publish_v1",
+      "checklist": {
+        "source_match": true,
+        "person_unchanged": true,
+        "safe_crop": true,
+        "copy_matches_landing": true,
+        "no_misleading_claim": true,
+        "mobile_readable": true,
+        "no_unwanted_text": true,
+        "rollback_identified": true
+      },
+      "notes": "試作3店舗のdry-run確認用。本番公開承認には使用しない。"
+    },
+    {
+      "asset_id": "fier-osaka-umeda-person-v3",
+      "salon_id": "sample-fier-osaka-umeda",
+      "qa_status": "pass",
+      "decision": "approved_for_dry_run",
+      "reviewer": "Codex visual QA (dry-run only)",
+      "reviewed_at": "2026-07-24T03:25:00+00:00",
+      "checklist_version": "person_v3_pre_publish_v1",
+      "checklist": {
+        "source_match": true,
+        "person_unchanged": true,
+        "safe_crop": true,
+        "copy_matches_landing": true,
+        "no_misleading_claim": true,
+        "mobile_readable": true,
+        "no_unwanted_text": true,
+        "rollback_identified": true
+      },
+      "notes": "試作3店舗のdry-run確認用。本番公開承認には使用しない。"
+    }
+  ]
+}

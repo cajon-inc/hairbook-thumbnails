@@ -1,0 +1,106 @@
+{
+  "schema_version": "hairbook.person_v3_manifest.v1",
+  "design_version": "person_v3_layered_v1",
+  "environment": "sample",
+  "assets": [
+    {
+      "asset_id": "forte-omotesando-person-v3",
+      "salon_id": "sample-forte-omotesando",
+      "product_ids": [],
+      "theme": "ink_gold",
+      "source": {
+        "path": "official/forte-omotesando-style.jpg",
+        "page_url": "https://www.forte-group.jp/salon/omotesando/",
+        "image_url": "https://forte-system.sakura.ne.jp/upload/save_images/staff/7/style1_4dabe0ec-a9bb-8482-ae59-cf32755918e2.jpg",
+        "sha256": "a94a3b3c3db72072208b8880fe148da4e0f50528a1025b0c9b4ad3023f6cdc18",
+        "source_type": "model_style"
+      },
+      "image": {
+        "focal_x": 0.5,
+        "focal_y": 0.25,
+        "brightness": 1.0,
+        "saturation": 0.96,
+        "contrast": 1.0
+      },
+      "copy": {
+        "area": "東京・表参道／原宿",
+        "salon_name": "FORTE 表参道",
+        "access": [
+          "明治神宮前駅 徒歩1分｜表参道駅 徒歩5分"
+        ],
+        "headline": [
+          "プラチナトリートメントで",
+          "天使の輪ができるツヤ髪へ"
+        ],
+        "support": "",
+        "cta": "詳しく見る"
+      }
+    },
+    {
+      "asset_id": "kenje-hiratsuka-lusca-person-v3",
+      "salon_id": "sample-kenje-hiratsuka-lusca",
+      "product_ids": [],
+      "theme": "sage",
+      "source": {
+        "path": "official/kenje-hiratsuka-lusca-style.jpg",
+        "page_url": "https://kenje-group.co.jp/salon/hiratsuka/",
+        "image_url": "https://b-merit.jp/uploads/blog/623e15cd6439592a1a155aba1d0d44a2.jpg",
+        "sha256": "d71f0e673f0f695bde1aeb30436dab08cc271618197aa71e430919fcb9b8ee5b",
+        "source_type": "model_style"
+      },
+      "image": {
+        "focal_x": 0.5,
+        "focal_y": 0.5,
+        "brightness": 0.96,
+        "saturation": 0.9,
+        "contrast": 1.0
+      },
+      "copy": {
+        "area": "神奈川・平塚",
+        "salon_name": "KENJE 平塚LUSCA",
+        "access": [
+          "JR平塚駅北口｜ラスカ新館6F"
+        ],
+        "headline": [
+          "髪質改善も、透明感カラーも。"
+        ],
+        "support": "ツヤと柔らかさが伝わるスタイルへ",
+        "cta": "スタイルを見る"
+      }
+    },
+    {
+      "asset_id": "fier-osaka-umeda-person-v3",
+      "salon_id": "sample-fier-osaka-umeda",
+      "product_ids": [],
+      "theme": "ink_gold",
+      "source": {
+        "path": "official/fier-osaka-umeda-style.jpg",
+        "page_url": "https://fier.jp/",
+        "image_url": "https://fier.jp/wp-content/themes/fier/assets/images/top/about/250317/style04.jpg",
+        "sha256": "5b4d39fd4dff7587666a45856de3f0ce7552e93bf530b96bc137a3bd9f703193",
+        "source_type": "model_style"
+      },
+      "image": {
+        "focal_x": 0.5,
+        "focal_y": 1.0,
+        "zoom": 1.2,
+        "brightness": 0.95,
+        "saturation": 0.92,
+        "contrast": 1.0
+      },
+      "copy": {
+        "area": "大阪・梅田",
+        "salon_name": "Fier 大阪梅田",
+        "access": [
+          "大阪市北区堂山町4-6｜SERタワーズ801"
+        ],
+        "headline": [
+          "Fierだから叶う、",
+          "似合わせと再現性。"
+        ],
+        "support": "一人ひとりに馴染むヘアデザイン",
+        "cta": "詳しく見る"
+      }
+    }
+  ]
+}
